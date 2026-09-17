@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy import Column, Integer, ForeignKey, Boolean
 from app.db.base_class import Base
 
 class UserJurisdiction(Base):
@@ -8,3 +8,4 @@ class UserJurisdiction(Base):
     UserID = Column(Integer, ForeignKey("users.UserID"), nullable=False)
     DistrictID = Column(Integer, ForeignKey("district.DistrictID"), nullable=True)
     UnitID = Column(Integer, ForeignKey("police_station.UnitID"), nullable=True)
+    Active = Column(Boolean, nullable=False, default=True)

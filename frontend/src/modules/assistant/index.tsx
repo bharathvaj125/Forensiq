@@ -10,8 +10,8 @@ export default function AssistantPanel() {
   const [messages, setMessages] = useState<any[]>([
     {
       sender: "bot",
-      text: "### 👮 Karnataka Police AI Intelligence Command\nGreetings Officer! I am your KSP Crime Intelligence Assistant powered by Gemini 2.5 Flash / Advanced RAG Engine.\n\nI have indexed all **5,000 FIR Records**, suspect graphs, evidence, and GIS hotspots in your jurisdiction. How can I assist your investigation today?",
-      modelVersion: "Gemini 2.5 Flash Engine",
+      text: "### 👮 Karnataka Police AI Intelligence Command\nGreetings Officer! I am your KSP Crime Intelligence Assistant, powered by the KSP RAG Intelligence Engine.\n\nI have indexed all **5,000 FIR Records**, suspect graphs, evidence, and GIS hotspots in your jurisdiction. How can I assist your investigation today?",
+      modelVersion: "ksp-rag-intelligence-v3",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,7 @@ export default function AssistantPanel() {
           text: data.answer,
           sources: data.source_case_ids || [],
           downloadUrl: data.download_url || null,
-          modelVersion: data.model_version || "Gemini 2.5 Flash RAG",
+          modelVersion: data.model_version || "ksp-rag-intelligence-v3",
         },
       ]);
     } catch (err) {
@@ -152,7 +152,7 @@ export default function AssistantPanel() {
                   </span>
                 </div>
                 <p className="text-[10px] text-blue-400 font-mono">
-                  Gemini 2.5 Flash / Advanced RAG Engine
+                  KSP RAG Intelligence Engine
                 </p>
               </div>
             </div>
@@ -224,7 +224,7 @@ export default function AssistantPanel() {
 
                 {m.sender === "bot" && (
                   <div className="text-[9px] text-slate-500 font-mono mt-1.5 text-right uppercase tracking-wider">
-                    {m.modelVersion || "Gemini 2.5 Flash RAG"}
+                    {m.modelVersion || "ksp-rag-intelligence-v3"}
                   </div>
                 )}
               </div>
@@ -233,7 +233,7 @@ export default function AssistantPanel() {
             {loading && (
               <div className="bg-[#151c2e] border border-[#1e293b] text-slate-300 p-3 rounded-lg text-xs self-start mr-auto flex items-center gap-2 font-mono shadow-md">
                 <RefreshCw className="animate-spin text-blue-400" size={14} />
-                <span>Gemini 2.5 Flash Analyzing PostgreSQL Dataset...</span>
+                <span>Analyzing Crime Records Dataset...</span>
               </div>
             )}
             <div ref={scrollRef} />

@@ -11,6 +11,9 @@ env/
 
 # Local dev SQLite database (runtime-generated, don't commit seeded data)
 backend/ksp_crime_intel.db
+backend/ksp_crime_intel.db-journal
+backend/ksp_crime_intel.db-wal
+backend/ksp_crime_intel.db-shm
 
 # IDE
 .vscode/

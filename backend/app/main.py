@@ -128,7 +128,7 @@ app = FastAPI(
 # CORSMiddleware registered first immediately after app instantiation
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.onslate\.in|https://.*\.catalystappsail\.in|http://localhost:.*",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onslate\.in|https://.*\.catalystappsail\.in|http://localhost:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

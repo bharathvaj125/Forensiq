@@ -1,5 +1,5 @@
 import logging
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import or_, cast, String
 from fastapi import HTTPException, status
 from app.models.report_job import ReportJob
@@ -92,7 +92,9 @@ import io
 
 def export_cases_csv(db: Session, current_user: User) -> bytes:
     """Export jurisdiction-scoped cases as a CSV file."""
-    query = db.query(CaseMaster)
+    query = db.query(CaseMaster).options(
+        selectinload(CaseMaster.accused_list), selectinload(CaseMaster.evidence_items)
+    )
     query = apply_jurisdiction_filter(query, db, current_user)
     cases = query.limit(1000).all()
     

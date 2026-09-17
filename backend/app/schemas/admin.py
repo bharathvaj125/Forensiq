@@ -9,6 +9,9 @@ class UserCreate(BaseModel):
     RoleID: Optional[int] = None
     Rank: Optional[str] = None
 
+class UserRoleUpdate(BaseModel):
+    RoleID: int
+
 class UserJurisdictionCreate(BaseModel):
     UserID: int
     DistrictID: Optional[int] = None

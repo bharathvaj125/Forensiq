@@ -16,6 +16,11 @@ export const adminService = {
     return response.data;
   },
 
+  async updateUserRole(userId: number, roleId: number) {
+    const response = await apiClient.patch(`/admin/users/${userId}/role`, { RoleID: roleId });
+    return response.data;
+  },
+
   async getOfficers(params: { page?: number; pageSize?: number; search?: string } = {}) {
     const response = await apiClient.get("/officers", { params });
     return response.data;

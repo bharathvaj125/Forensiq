@@ -256,12 +256,12 @@ export default function Collaboration() {
           <div className="flex items-center gap-2">
             <ShieldCheck className="text-blue-400" size={20} />
             <h1 className="text-base font-bold tracking-tight text-slate-100 font-mono uppercase">
-              {isExternalOfficer ? "External Agency Officer Access Portal" : "Karnataka Police Inter-Agency Collaboration Platform"}
+              {isExternalOfficer ? "External Agency Officer Access Portal" : "Forensiq Inter-Agency Collaboration Platform"}
             </h1>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
             {isExternalOfficer
-              ? "Search Karnataka Police Cases, Request Specific FIR Access, and View Approved Cases."
+              ? "Search Case Records, Request Specific FIR Access, and View Approved Cases."
               : "Role-Based Access Control (RBAC), Granular Scope Configurator, and External Case Approvals."}
           </p>
         </div>

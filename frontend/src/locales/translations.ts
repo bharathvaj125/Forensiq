@@ -141,6 +141,8 @@ export const translations: Record<Language, Record<string, string>> = {
     tab_workspace: "Agency Vault Workspace",
     tab_agencies: "Connected Federal Agencies",
     tab_officers: "Liaison Officers",
+    tab_audit: "Audit Logs",
+    btn_request: "Request",
 
     // --- Admin ---
     admin_title: "System Admin & Officer Appointments",
@@ -297,6 +299,8 @@ export const translations: Record<Language, Record<string, string>> = {
     tab_workspace: "ಏಜೆನ್ಸಿ ಕೋಶದ ಕೆಲಸದ ಕ್ಷೇತ್ರ",
     tab_agencies: "ಸಂಯೋಜಿತ ಕೇಂದ್ರ ಏಜೆನ್ಸಿಗಳು",
     tab_officers: "ಸಂಪರ್ಕ ಅಧಿಕಾರಿಗಳು",
+    tab_audit: "ಲೆಕ್ಕಪರಿಶೋಧನೆ ಲಾಗ್‌ಗಳು",
+    btn_request: "ವಿನಂತಿ",
 
     // --- Admin ---
     admin_title: "ಸಿಸ್ಟಮ್ ನಿರ್ವಹಣೆ ಮತ್ತು ಅಧಿಕಾರಿಗಳ ನೇಮಕಾತಿ",

@@ -60,7 +60,7 @@ export default function Predictive() {
   const [chatMessages, setChatMessages] = useState<Array<{ sender: "user" | "bot"; text: string; actions?: string[] }>>([
     {
       sender: "bot",
-      text: "Karnataka State Police Operational Command Assistant Ready. Ask any query regarding patrol deployment, hotspot risks, station growth, or crime forecasts.",
+      text: "Forensiq Operational Command Assistant Ready. Ask any query regarding patrol deployment, hotspot risks, station growth, or crime forecasts.",
       actions: ["Which area needs patrol tonight?", "Why is Belagavi risky?", "How many officers should be deployed?"],
     },
   ]);
@@ -176,7 +176,7 @@ export default function Predictive() {
         ...prev,
         {
           sender: "bot",
-          text: "Karnataka State Police Intelligence Service encountered an issue querying the database. Please try again.",
+          text: "Forensiq Intelligence Service encountered an issue querying the database. Please try again.",
         },
       ]);
     } finally {
@@ -194,7 +194,7 @@ export default function Predictive() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-slate-100 font-mono uppercase">
-              KSP AI Decision Support & Predictive Intelligence System
+              Forensiq AI Decision Support & Predictive Intelligence System
             </h1>
             <p className="text-xs text-slate-400 font-sans">
               Operational Command Center computing dynamic forecasts, KDE hotspots, and patrol strategies strictly from PostgreSQL.

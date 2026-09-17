@@ -6,7 +6,7 @@ from app.core.dependencies import get_db
 from app.core.permissions import verify_permission
 from app.models.user import User
 from app.models.user_jurisdiction import UserJurisdiction
-from app.schemas.admin import UserCreate, UserJurisdictionCreate, UserJurisdictionOut
+from app.schemas.admin import UserCreate, UserJurisdictionCreate, UserJurisdictionOut, UserRoleUpdate
 from app.schemas.auth import UserOut
 from app.core.security import hash_password
 
@@ -83,6 +83,24 @@ def list_users(
         if u.OfficerID in officers:
             setattr(u, "Rank", officers[u.OfficerID])
     return users
+
+@router.patch("/users/{user_id}/role", response_model=UserOut, summary="Update User Security Role")
+def update_user_role(
+    user_id: int,
+    role_in: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_permission("users:manage"))
+):
+    """
+    Updates the RBAC RoleID assigned to a platform user.
+    """
+    target_user = db.query(User).filter(User.UserID == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    target_user.RoleID = role_in.RoleID
+    db.commit()
+    db.refresh(target_user)
+    return target_user
 
 @router.post("/jurisdictions", response_model=UserJurisdictionOut, status_code=status.HTTP_201_CREATED, summary="Assign User Jurisdiction Override")
 def assign_jurisdiction(

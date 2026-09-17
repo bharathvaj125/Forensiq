@@ -10,8 +10,8 @@ export default function AssistantPanel() {
   const [messages, setMessages] = useState<any[]>([
     {
       sender: "bot",
-      text: "### 👮 Karnataka Police AI Intelligence Command\nGreetings Officer! I am your KSP Crime Intelligence Assistant, powered by the KSP RAG Intelligence Engine.\n\nI have indexed all **5,000 FIR Records**, suspect graphs, evidence, and GIS hotspots in your jurisdiction. How can I assist your investigation today?",
-      modelVersion: "ksp-rag-intelligence-v3",
+      text: "### 👮 Forensiq AI Intelligence Command\nGreetings Officer! I am your Forensiq Crime Intelligence Assistant, powered by Gemini.\n\nI have indexed all **5,000 FIR Records**, suspect graphs, evidence, and GIS hotspots in your jurisdiction. How can I assist your investigation today?",
+      modelVersion: "gemini-3.6-flash",
     },
   ]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,7 @@ export default function AssistantPanel() {
           text: data.answer,
           sources: data.source_case_ids || [],
           downloadUrl: data.download_url || null,
-          modelVersion: data.model_version || "ksp-rag-intelligence-v3",
+          modelVersion: data.model_version || "gemini-3.6-flash",
         },
       ]);
     } catch (err) {
@@ -152,7 +152,7 @@ export default function AssistantPanel() {
                   </span>
                 </div>
                 <p className="text-[10px] text-blue-400 font-mono">
-                  KSP RAG Intelligence Engine
+                  Gemini-Powered Intelligence Engine
                 </p>
               </div>
             </div>
@@ -224,7 +224,7 @@ export default function AssistantPanel() {
 
                 {m.sender === "bot" && (
                   <div className="text-[9px] text-slate-500 font-mono mt-1.5 text-right uppercase tracking-wider">
-                    {m.modelVersion || "ksp-rag-intelligence-v3"}
+                    {m.modelVersion || "gemini-3.6-flash"}
                   </div>
                 )}
               </div>

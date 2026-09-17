@@ -41,6 +41,9 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
   // Configurator Modal for Existing Officers
   const [selectedOfficerConfig, setSelectedOfficerConfig] = useState<any | null>(null);
   const [modalSuccess, setModalSuccess] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("1");
+  const [isSavingAccess, setIsSavingAccess] = useState(false);
 
   // Queries
   const { data: logs, isLoading: isLogsLoading } = useQuery<any[]>({
@@ -155,12 +158,22 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
     }
   };
 
-  const handleSaveModalAccess = () => {
-    setModalSuccess(`Access Scope & Permissions updated for Officer ${selectedOfficerConfig.Username}`);
-    setTimeout(() => {
-      setSelectedOfficerConfig(null);
-      setModalSuccess(null);
-    }, 1500);
+  const handleSaveModalAccess = async () => {
+    setModalError(null);
+    setIsSavingAccess(true);
+    try {
+      await adminService.updateUserRole(selectedOfficerConfig.UserID, parseInt(selectedRoleId, 10));
+      setModalSuccess(`Security role updated for Officer ${selectedOfficerConfig.Username}. (Scope level and per-feature grants shown below are not yet wired to a backend permission model.)`);
+      refetchUsers().catch(() => {});
+      setTimeout(() => {
+        setSelectedOfficerConfig(null);
+        setModalSuccess(null);
+      }, 2500);
+    } catch (err: any) {
+      setModalError(err.response?.data?.detail || "Failed to update role.");
+    } finally {
+      setIsSavingAccess(false);
+    }
   };
 
   return (
@@ -449,7 +462,11 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
                           </div>
 
                           <button
-                            onClick={() => setSelectedOfficerConfig(u)}
+                            onClick={() => {
+                              setSelectedOfficerConfig(u);
+                              setSelectedRoleId(String(u.role?.RoleID || 1));
+                              setModalError(null);
+                            }}
                             className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 font-mono shadow"
                           >
                             <Sliders size={12} />
@@ -562,11 +579,16 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
                 {modalSuccess}
               </div>
             )}
+            {modalError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg font-mono">
+                {modalError}
+              </div>
+            )}
 
             <div className="space-y-4 text-xs font-mono">
               <div>
-                <label className="block text-slate-400 mb-1 font-bold">Configure Access Scope Level:</label>
-                <select className="w-full bg-[#151c2e] border border-[#334155] rounded-lg px-3 py-2 text-slate-100 font-bold">
+                <label className="block text-slate-400 mb-1 font-bold">Configure Access Scope Level (display only - not yet backed by a permission model):</label>
+                <select className="w-full bg-[#151c2e] border border-[#334155] rounded-lg px-3 py-2 text-slate-100 font-bold" disabled>
                   <option value="State">🌟 State Level Access (Statewide Command View)</option>
                   <option value="District">🏙️ District Level Access</option>
                   <option value="Station">👮 Station Level Access (Precinct Scope)</option>
@@ -576,7 +598,11 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
 
               <div>
                 <label className="block text-slate-400 mb-1 font-bold">Assigned Security Role:</label>
-                <select className="w-full bg-[#151c2e] border border-[#334155] rounded-lg px-3 py-2 text-slate-100 font-bold">
+                <select
+                  value={selectedRoleId}
+                  onChange={(e) => setSelectedRoleId(e.target.value)}
+                  className="w-full bg-[#151c2e] border border-[#334155] rounded-lg px-3 py-2 text-slate-100 font-bold"
+                >
                   <option value="1">Admin (Super Administrator)</option>
                   <option value="2">SCRB Officer (State Auditor)</option>
                   <option value="3">SHO (Station House Officer)</option>
@@ -584,23 +610,23 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
                 </select>
               </div>
 
-              <div className="p-3 bg-[#151c2e] border border-[#1e293b] rounded-lg space-y-2">
-                <span className="text-slate-300 font-bold block">Feature Permission Grants:</span>
+              <div className="p-3 bg-[#151c2e] border border-[#1e293b] rounded-lg space-y-2 opacity-60">
+                <span className="text-slate-300 font-bold block">Feature Permission Grants (derived automatically from Role - not individually configurable yet):</span>
                 <div className="space-y-1.5 text-slate-300 text-[11px]">
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked className="rounded accent-blue-600" />
+                    <input type="checkbox" checked disabled className="rounded accent-blue-600" />
                     <span>View Cases & Accused Dossiers</span>
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked className="rounded accent-blue-600" />
+                    <input type="checkbox" checked disabled className="rounded accent-blue-600" />
                     <span>View GIS & Hotspot Maps</span>
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked className="rounded accent-blue-600" />
+                    <input type="checkbox" checked disabled className="rounded accent-blue-600" />
                     <span>View Crime Network Graphs</span>
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="checkbox" defaultChecked className="rounded accent-blue-600" />
+                    <input type="checkbox" checked disabled className="rounded accent-blue-600" />
                     <span>Export Official PDF Dossiers</span>
                   </label>
                 </div>
@@ -616,9 +642,10 @@ export default function Admin({ activeTab: initialTab = "appointments" }: AdminP
               </button>
               <button
                 onClick={handleSaveModalAccess}
-                className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-5 py-2 rounded-lg font-mono shadow"
+                disabled={isSavingAccess}
+                className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-5 py-2 rounded-lg font-mono shadow disabled:opacity-50"
               >
-                Save & Apply Changes
+                {isSavingAccess ? "Saving..." : "Save Role Change"}
               </button>
             </div>
           </div>

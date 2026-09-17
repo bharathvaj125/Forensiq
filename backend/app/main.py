@@ -55,18 +55,6 @@ async def lifespan(app: FastAPI):
                 except Exception as ext_err:
                     logger.error(f"EXCEPTION in CREATE EXTENSION postgis:\n{traceback.format_exc()}")
 
-                logger.info("START: ALTER TABLE report_jobs")
-                try:
-                    conn.execute(text('ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS "CreatedBy" INTEGER;'))
-                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FileName" VARCHAR;'))
-                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FilePath" VARCHAR;'))
-                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FileUrl" VARCHAR;'))
-                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FileSize" BIGINT;'))
-                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "UploadedBy" INTEGER;'))
-                    logger.info("✓ ALTER TABLE report_jobs & evidence success")
-                except Exception as alter_err:
-                    logger.error(f"EXCEPTION in ALTER TABLE:\n{traceback.format_exc()}")
-
             logger.info("✓ PostgreSQL Connected")
         else:
             logger.info("✓ SQLite Engine Active")
@@ -78,6 +66,22 @@ async def lifespan(app: FastAPI):
         except Exception as schema_err:
             logger.error(f"EXCEPTION in Base.metadata.create_all:\n{traceback.format_exc()}")
             raise schema_err
+
+        if engine.dialect.name == "postgresql":
+            # Patches columns onto a pre-existing older database that predates these
+            # model fields; a no-op on a fresh DB since create_all() already added them.
+            logger.info("START: ALTER TABLE report_jobs & evidence")
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE report_jobs ADD COLUMN IF NOT EXISTS "CreatedBy" INTEGER;'))
+                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FileName" VARCHAR;'))
+                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FilePath" VARCHAR;'))
+                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FileUrl" VARCHAR;'))
+                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "FileSize" BIGINT;'))
+                    conn.execute(text('ALTER TABLE evidence ADD COLUMN IF NOT EXISTS "UploadedBy" INTEGER;'))
+                logger.info("✓ ALTER TABLE report_jobs & evidence success")
+            except Exception as alter_err:
+                logger.error(f"EXCEPTION in ALTER TABLE:\n{traceback.format_exc()}")
 
         logger.info("START: Remaining initialization")
         import threading

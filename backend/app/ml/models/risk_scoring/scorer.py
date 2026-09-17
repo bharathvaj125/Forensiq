@@ -49,7 +49,8 @@ def predict_risk(payload: dict) -> dict:
 
     # Weighted expected severity: classes are 0=Low, 1=Medium, 2=High/Severe,
     # so this yields a continuous 0-1 score rather than a single class probability.
-    score = (probabilities[1] * 0.5) + (probabilities[2] * 1.0) if len(probabilities) >= 3 else float(probabilities[-1])
+    # Cast to a native float - psycopg2 can't adapt numpy scalar types for Postgres writes.
+    score = float((probabilities[1] * 0.5) + (probabilities[2] * 1.0)) if len(probabilities) >= 3 else float(probabilities[-1])
 
     # Percentile-calibrated risk score levels based on dataset distribution
     # (Distribution: Mean ~0.15, 75th percentile ~0.34, Max ~0.52)

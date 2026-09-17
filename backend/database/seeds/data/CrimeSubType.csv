@@ -1,0 +1,74 @@
+CrimeSubHeadID,CrimeHeadID,CrimeHeadName,SeqID
+1,1,Murder,1
+2,1,Attempt to Murder,2
+3,1,Culpable Homicide Not Amounting to Murder,3
+4,1,Grievous Hurt,4
+5,1,Simple Hurt,5
+6,1,Kidnapping,6
+7,1,Abduction,7
+8,1,Assault,8
+9,2,Theft,1
+10,2,Robbery,2
+11,2,Dacoity,3
+12,2,House-Breaking / Burglary,4
+13,2,Criminal Trespass,5
+14,2,Mischief,6
+15,2,Cheating,7
+16,2,Extortion,8
+17,3,Rape,1
+18,3,Sexual Harassment,2
+19,3,Dowry Death,3
+20,3,Cruelty by Husband or Relatives,4
+21,3,Molestation,5
+22,3,Stalking,6
+23,3,Acid Attack,7
+24,4,Child Abuse,1
+25,4,POCSO Offences,2
+26,4,Child Trafficking,3
+27,4,Kidnapping of Minors,4
+28,4,Child Labour Violations,5
+29,5,Rioting,1
+30,5,Unlawful Assembly,2
+31,5,Affray,3
+32,5,Public Nuisance,4
+33,5,Communal Violence,5
+34,6,Cheating and Financial Fraud,1
+35,6,Criminal Breach of Trust,2
+36,6,Forgery,3
+37,6,Counterfeiting,4
+38,6,Money Laundering,5
+39,6,Chit Fund Fraud,6
+40,7,Online Financial Fraud,1
+41,7,Identity Theft,2
+42,7,Hacking,3
+43,7,Cyberstalking,4
+44,7,Phishing,5
+45,7,Social Media Impersonation,6
+46,8,Possession of Narcotic Drugs,1
+47,8,Drug Trafficking,2
+48,8,Cultivation of Narcotic Plants,3
+49,8,Illicit Drug Manufacturing,4
+50,9,Sedition,1
+51,9,Unlawful Activities,2
+52,9,Terrorism-Related Offences,3
+53,9,Waging War Against the State,4
+54,10,Rash and Negligent Driving,1
+55,10,Hit and Run,2
+56,10,Drunken Driving,3
+57,10,Motor Vehicle Theft,4
+58,10,Traffic Rule Violations,5
+59,11,Elder Abuse,1
+60,11,Fraud Against Senior Citizens,2
+61,11,Neglect of Senior Citizens,3
+62,12,Defamation,1
+63,12,Criminal Intimidation,2
+64,12,Trespass,3
+65,12,Offences Against Public Servants,4
+66,13,Arms Act Violations,1
+67,13,Excise Act Violations,2
+68,13,Gambling Act Violations,3
+69,13,Prohibition Act Violations,4
+70,14,Trafficking for Forced Labour,1
+71,14,Trafficking for Sexual Exploitation,2
+72,14,Bonded Labour,3
+73,14,Organ Trafficking,4

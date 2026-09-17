@@ -1,0 +1,3 @@
+-- Read-only reference export of the finalized relational schema.
+-- Source of truth: the already-approved dataset design referenced in the SAD.
+-- Do NOT treat this file as a live migration - see backend/alembic/versions/.

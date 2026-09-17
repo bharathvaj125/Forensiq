@@ -1,0 +1,196 @@
+UnitID,UnitName,TypeID,ParentUnit,StateID,DistrictID,Active
+1,Bagalkot Police Station,1,,1,1,1
+2,Badami Police Station,1,,1,1,1
+3,Bilagi Police Station,1,,1,1,1
+4,Guledgudda Police Station,1,,1,1,1
+5,Hunagund Police Station,1,,1,1,1
+6,Jamakhandi Police Station,1,,1,1,1
+7,Mudhol Police Station,1,,1,1,1
+8,Rabkavi Banhatti Police Station,1,,1,1,1
+9,Ballari Town Police Station,1,,1,2,1
+10,Ballari Rural Police Station,1,,1,2,1
+11,Hospet Police Station,1,,1,2,1
+12,Sandur Police Station,1,,1,2,1
+13,Siruguppa Police Station,1,,1,2,1
+14,Kampli Police Station,1,,1,2,1
+15,Kudligi Police Station,1,,1,2,1
+16,Belagavi Town Police Station,1,,1,3,1
+17,Belagavi Rural Police Station,1,,1,3,1
+18,Athani Police Station,1,,1,3,1
+19,Bailhongal Police Station,1,,1,3,1
+20,Chikodi Police Station,1,,1,3,1
+21,Gokak Police Station,1,,1,3,1
+22,Hukkeri Police Station,1,,1,3,1
+23,Khanapur Police Station,1,,1,3,1
+24,Raibag Police Station,1,,1,3,1
+25,Ramdurg Police Station,1,,1,3,1
+26,Saundatti Police Station,1,,1,3,1
+27,Devanahalli Police Station,1,,1,4,1
+28,Doddaballapur Police Station,1,,1,4,1
+29,Hoskote Police Station,1,,1,4,1
+30,Nelamangala Police Station,1,,1,4,1
+31,Cubbon Park Police Station,1,,1,5,1
+32,Halasuru Police Station,1,,1,5,1
+33,Jayanagar Police Station,1,,1,5,1
+34,Rajajinagar Police Station,1,,1,5,1
+35,Whitefield Police Station,1,,1,5,1
+36,Yelahanka Police Station,1,,1,5,1
+37,Anekal Police Station,1,,1,5,1
+38,Banashankari Police Station,1,,1,5,1
+39,Vijayanagar Police Station,1,,1,5,1
+40,J C Nagar Police Station,1,,1,5,1
+41,Bidar Town Police Station,1,,1,6,1
+42,Bidar Rural Police Station,1,,1,6,1
+43,Aurad Police Station,1,,1,6,1
+44,Basavakalyan Police Station,1,,1,6,1
+45,Bhalki Police Station,1,,1,6,1
+46,Humnabad Police Station,1,,1,6,1
+47,Chamarajanagar Police Station,1,,1,7,1
+48,Gundlupet Police Station,1,,1,7,1
+49,Kollegal Police Station,1,,1,7,1
+50,Yelandur Police Station,1,,1,7,1
+51,Hanur Police Station,1,,1,7,1
+52,Chikballapur Town Police Station,1,,1,8,1
+53,Bagepalli Police Station,1,,1,8,1
+54,Chintamani Police Station,1,,1,8,1
+55,Gauribidanur Police Station,1,,1,8,1
+56,Gudibanda Police Station,1,,1,8,1
+57,Sidlaghatta Police Station,1,,1,8,1
+58,Chikkamagaluru Town Police Station,1,,1,9,1
+59,Kadur Police Station,1,,1,9,1
+60,Koppa Police Station,1,,1,9,1
+61,Mudigere Police Station,1,,1,9,1
+62,Narasimharajapura Police Station,1,,1,9,1
+63,Sringeri Police Station,1,,1,9,1
+64,Tarikere Police Station,1,,1,9,1
+65,Chitradurga Town Police Station,1,,1,10,1
+66,Challakere Police Station,1,,1,10,1
+67,Molakalmuru Police Station,1,,1,10,1
+68,Hiriyur Police Station,1,,1,10,1
+69,Holalkere Police Station,1,,1,10,1
+70,Hosadurga Police Station,1,,1,10,1
+71,Mangaluru Town Police Station,1,,1,11,1
+72,Mangaluru North Police Station,1,,1,11,1
+73,Bantwal Police Station,1,,1,11,1
+74,Belthangady Police Station,1,,1,11,1
+75,Puttur Police Station,1,,1,11,1
+76,Sullia Police Station,1,,1,11,1
+77,Moodabidri Police Station,1,,1,11,1
+78,Davanagere Town Police Station,1,,1,12,1
+79,Channagiri Police Station,1,,1,12,1
+80,Harihar Police Station,1,,1,12,1
+81,Honnali Police Station,1,,1,12,1
+82,Jagalur Police Station,1,,1,12,1
+83,Nyamathi Police Station,1,,1,12,1
+84,Dharwad Town Police Station,1,,1,13,1
+85,Hubballi Old Town Police Station,1,,1,13,1
+86,Hubballi Vidyanagar Police Station,1,,1,13,1
+87,Kalghatgi Police Station,1,,1,13,1
+88,Kundgol Police Station,1,,1,13,1
+89,Navalgund Police Station,1,,1,13,1
+90,Gadag Town Police Station,1,,1,14,1
+91,Mundargi Police Station,1,,1,14,1
+92,Nargund Police Station,1,,1,14,1
+93,Ron Police Station,1,,1,14,1
+94,Shirahatti Police Station,1,,1,14,1
+95,Hassan Town Police Station,1,,1,15,1
+96,Arkalgud Police Station,1,,1,15,1
+97,Arsikere Police Station,1,,1,15,1
+98,Belur Police Station,1,,1,15,1
+99,Channarayapatna Police Station,1,,1,15,1
+100,Holenarasipura Police Station,1,,1,15,1
+101,Sakleshpur Police Station,1,,1,15,1
+102,Haveri Town Police Station,1,,1,16,1
+103,Byadagi Police Station,1,,1,16,1
+104,Hangal Police Station,1,,1,16,1
+105,Hirekerur Police Station,1,,1,16,1
+106,Ranebennur Police Station,1,,1,16,1
+107,Savanur Police Station,1,,1,16,1
+108,Shiggaon Police Station,1,,1,16,1
+109,Kalaburagi Town Police Station,1,,1,17,1
+110,Kalaburagi Rural Police Station,1,,1,17,1
+111,Aland Police Station,1,,1,17,1
+112,Afzalpur Police Station,1,,1,17,1
+113,Chincholi Police Station,1,,1,17,1
+114,Chittapur Police Station,1,,1,17,1
+115,Jevargi Police Station,1,,1,17,1
+116,Sedam Police Station,1,,1,17,1
+117,Madikeri Police Station,1,,1,18,1
+118,Somwarpet Police Station,1,,1,18,1
+119,Virajpet Police Station,1,,1,18,1
+120,Kolar Town Police Station,1,,1,19,1
+121,Bangarapet Police Station,1,,1,19,1
+122,Malur Police Station,1,,1,19,1
+123,Mulbagal Police Station,1,,1,19,1
+124,Srinivaspur Police Station,1,,1,19,1
+125,Koppal Town Police Station,1,,1,20,1
+126,Gangavathi Police Station,1,,1,20,1
+127,Kushtagi Police Station,1,,1,20,1
+128,Yelburga Police Station,1,,1,20,1
+129,Mandya Town Police Station,1,,1,21,1
+130,Krishnarajpet Police Station,1,,1,21,1
+131,Maddur Police Station,1,,1,21,1
+132,Malavalli Police Station,1,,1,21,1
+133,Nagamangala Police Station,1,,1,21,1
+134,Pandavapura Police Station,1,,1,21,1
+135,Srirangapatna Police Station,1,,1,21,1
+136,Mysuru Town Police Station,1,,1,22,1
+137,Mysuru North Police Station,1,,1,22,1
+138,Hunsur Police Station,1,,1,22,1
+139,Krishnarajanagara Police Station,1,,1,22,1
+140,Nanjangud Police Station,1,,1,22,1
+141,Periyapatna Police Station,1,,1,22,1
+142,Tirumakudalu Narasipura Police Station,1,,1,22,1
+143,Heggadadevanakote Police Station,1,,1,22,1
+144,Raichur Town Police Station,1,,1,23,1
+145,Devadurga Police Station,1,,1,23,1
+146,Lingasugur Police Station,1,,1,23,1
+147,Manvi Police Station,1,,1,23,1
+148,Sindhanur Police Station,1,,1,23,1
+149,Ramanagara Town Police Station,1,,1,24,1
+150,Channapatna Police Station,1,,1,24,1
+151,Kanakapura Police Station,1,,1,24,1
+152,Magadi Police Station,1,,1,24,1
+153,Shivamogga Town Police Station,1,,1,25,1
+154,Bhadravathi Police Station,1,,1,25,1
+155,Hosanagara Police Station,1,,1,25,1
+156,Sagara Police Station,1,,1,25,1
+157,Shikaripura Police Station,1,,1,25,1
+158,Sorab Police Station,1,,1,25,1
+159,Thirthahalli Police Station,1,,1,25,1
+160,Tumakuru Town Police Station,1,,1,26,1
+161,Chiknayakanhalli Police Station,1,,1,26,1
+162,Gubbi Police Station,1,,1,26,1
+163,Koratagere Police Station,1,,1,26,1
+164,Madhugiri Police Station,1,,1,26,1
+165,Pavagada Police Station,1,,1,26,1
+166,Sira Police Station,1,,1,26,1
+167,Tiptur Police Station,1,,1,26,1
+168,Turuvekere Police Station,1,,1,26,1
+169,Udupi Town Police Station,1,,1,27,1
+170,Karkala Police Station,1,,1,27,1
+171,Kundapura Police Station,1,,1,27,1
+172,Karwar Police Station,1,,1,28,1
+173,Ankola Police Station,1,,1,28,1
+174,Bhatkal Police Station,1,,1,28,1
+175,Haliyal Police Station,1,,1,28,1
+176,Honnavar Police Station,1,,1,28,1
+177,Kumta Police Station,1,,1,28,1
+178,Mundgod Police Station,1,,1,28,1
+179,Sirsi Police Station,1,,1,28,1
+180,Siddapur Police Station,1,,1,28,1
+181,Yellapur Police Station,1,,1,28,1
+182,Vijayapura Town Police Station,1,,1,29,1
+183,Basavana Bagewadi Police Station,1,,1,29,1
+184,Indi Police Station,1,,1,29,1
+185,Muddebihal Police Station,1,,1,29,1
+186,Sindagi Police Station,1,,1,29,1
+187,Yadgir Town Police Station,1,,1,30,1
+188,Shahapur Police Station,1,,1,30,1
+189,Shorapur Police Station,1,,1,30,1
+190,Surpur Police Station,1,,1,30,1
+191,Hosapete Town Police Station,1,,1,31,1
+192,Hagaribommanahalli Police Station,1,,1,31,1
+193,Kottur Police Station,1,,1,31,1
+194,Harapanahalli Police Station,1,,1,31,1
+195,Kudligi Rural Police Station,1,,1,31,1

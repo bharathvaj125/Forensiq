@@ -1,0 +1,7 @@
+{
+  "name": "ksp-backend",
+  "stack": "python_3_12",
+  "build_path": "./",
+  "command": "python3 main.py",
+  "port": 8000
+}

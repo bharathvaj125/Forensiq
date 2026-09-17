@@ -1,0 +1,14 @@
+{
+  "slate": [
+    {
+      "name": "ksp-frontend",
+      "source": "frontend"
+    }
+  ],
+  "appsail": [
+    {
+      "name": "ksp-backend",
+      "source": "backend"
+    }
+  ]
+}

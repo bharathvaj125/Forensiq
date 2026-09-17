@@ -1,0 +1,713 @@
+VehicleID,CaseMasterID,RegistrationNumber,VehicleType,Make,Model,Color,InvolvementRole
+1,3,KA70P0521,Two-Wheeler,Honda,Shine,Black,Offending Vehicle
+2,3,KA26FP0107,Two-Wheeler,Honda,Shine,White,Offending Vehicle
+3,5,KA44C1585,Two-Wheeler,Bajaj,Platina,Grey,Offending Vehicle
+4,8,KA69Z6202,Two-Wheeler,Bajaj,Pulsar 150,Green,Stolen Vehicle
+5,14,KA09S4742,Car,Tata,Altroz,Grey,Transport Vehicle
+6,32,KA27TS1170,Car,Hyundai,Venue,Blue,Transport Vehicle
+7,49,KA42F0526,Car,Honda,Amaze,Grey,Offending Vehicle
+8,63,KA64XR2341,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Transport Vehicle
+9,63,KA52FZ8349,Car,Hyundai,Venue,Maroon,Transport Vehicle
+10,64,KA09JZ8670,Bus,Ashok Leyland,Viking,Maroon,Offending Vehicle
+11,65,KA44G2592,Two-Wheeler,Hero,Splendor Plus,Red,Getaway Vehicle
+12,68,KA39D2647,Two-Wheeler,Bajaj,Platina,Black,Offending Vehicle
+13,73,KA15XW5039,Two-Wheeler,Bajaj,CT 100,White,Stolen Vehicle
+14,75,KA63Z8728,Car,Toyota,Innova,Black,Getaway Vehicle
+15,78,KA28T6538,Car,Tata,Altroz,Maroon,Transport Vehicle
+16,97,KA03P0118,Car,Hyundai,i10,Blue,Transport Vehicle
+17,100,KA66G7954,Car,Maruti Suzuki,Alto,Black,Offending Vehicle
+18,102,KA61EC7063,Car,Toyota,Etios,Grey,Transport Vehicle
+19,103,KA52VC3140,Mini-Truck / Goods Carrier,Tata,Ace,White,Transport Vehicle
+20,104,KA10VW1605,Bus,Tata,Starbus,Grey,Transport Vehicle
+21,105,KA22ME6571,Two-Wheeler,Hero,Splendor Plus,Grey,Getaway Vehicle
+22,109,KA63E3567,Car,Honda,Amaze,Maroon,Transport Vehicle
+23,109,KA08P8239,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Blue,Transport Vehicle
+24,123,KA52Y9334,Two-Wheeler,Hero,Splendor Plus,Grey,Transport Vehicle
+25,126,KA67YE5148,SUV,Tata,Safari,Maroon,Getaway Vehicle
+26,129,KA10L9225,Car,Tata,Nexon,Blue,Offending Vehicle
+27,133,KA09J2585,Car,Tata,Tiago,Blue,Getaway Vehicle
+28,140,KA14G1754,SUV,Tata,Safari,Red,Offending Vehicle
+29,148,KA65FX0833,Car,Tata,Tiago,Red,Offending Vehicle
+30,155,KA34U9039,Car,Maruti Suzuki,Alto,Silver,Transport Vehicle
+31,164,KA48K0686,Two-Wheeler,Yamaha,FZ,White,Transport Vehicle
+32,165,KA32J9174,Mini-Truck / Goods Carrier,Tata,407,Grey,Offending Vehicle
+33,168,KA53E5443,Car,Hyundai,i20,Silver,Transport Vehicle
+34,170,KA14XW3645,Two-Wheeler,Honda,Unicorn,Silver,Offending Vehicle
+35,172,KA25HW4574,Car,Hyundai,i20,White,Offending Vehicle
+36,178,KA15EZ4350,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,White,Offending Vehicle
+37,189,KA50F7145,Car,Tata,Nexon,Black,Offending Vehicle
+38,205,KA56Y5410,SUV,Tata,Safari,Blue,Offending Vehicle
+39,206,KA42TN3144,Two-Wheeler,Bajaj,Avenger,Maroon,Offending Vehicle
+40,212,KA52G3444,SUV,Tata,Safari,Red,Stolen Vehicle
+41,234,KA11MR5492,Two-Wheeler,Honda,Dio,Silver,Stolen Vehicle
+42,235,KA19B7785,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Grey,Transport Vehicle
+43,266,KA23BF1989,Mini-Truck / Goods Carrier,Tata,407,Grey,Offending Vehicle
+44,268,KA71XU7778,Bus,Tata,Starbus,Maroon,Transport Vehicle
+45,277,KA36BG4452,SUV,Toyota,Fortuner,Grey,Transport Vehicle
+46,288,KA54HL1021,Two-Wheeler,Honda,Shine,Black,Offending Vehicle
+47,294,KA49AJ6390,Two-Wheeler,Royal Enfield,Meteor 350,White,Transport Vehicle
+48,307,KA63J6625,Two-Wheeler,Honda,Unicorn,Maroon,Offending Vehicle
+49,314,KA04R2224,SUV,Tata,Safari,Maroon,Offending Vehicle
+50,322,KA42UJ6907,Car,Tata,Tiago,Green,Offending Vehicle
+51,323,KA29U0660,Car,Toyota,Innova,Blue,Transport Vehicle
+52,328,KA61N3572,Car,Hyundai,i20,Silver,Offending Vehicle
+53,332,KA21CA5112,Two-Wheeler,Royal Enfield,Meteor 350,Black,Offending Vehicle
+54,338,KA32T4942,Two-Wheeler,Yamaha,FZ,Black,Stolen Vehicle
+55,351,KA09AK8032,SUV,Toyota,Fortuner,Blue,Offending Vehicle
+56,353,KA23RY7922,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Maroon,Offending Vehicle
+57,354,KA36FL6210,Two-Wheeler,Bajaj,Platina,Black,Offending Vehicle
+58,363,KA34GP4527,Two-Wheeler,TVS,Jupiter,Blue,Offending Vehicle
+59,367,KA61LA4821,Car,Honda,Amaze,Grey,Transport Vehicle
+60,375,KA71KU5420,SUV,Toyota,Fortuner,Green,Getaway Vehicle
+61,380,KA41U3034,Mini-Truck / Goods Carrier,Tata,Ace,Grey,Transport Vehicle
+62,383,KA25FE0232,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Transport Vehicle
+63,392,KA63X9406,Car,Tata,Altroz,Silver,Offending Vehicle
+64,392,KA24F7828,Car,Honda,Amaze,Blue,Offending Vehicle
+65,402,KA20BF9144,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Transport Vehicle
+66,402,KA58GP7026,SUV,Tata,Safari,Maroon,Transport Vehicle
+67,405,KA34D2848,Car,Maruti Suzuki,WagonR,Grey,Offending Vehicle
+68,415,KA30TT7439,SUV,Toyota,Fortuner,White,Transport Vehicle
+69,421,KA55N2442,Car,Tata,Altroz,Grey,Getaway Vehicle
+70,424,KA16ST4461,Two-Wheeler,Bajaj,Avenger,Green,Offending Vehicle
+71,424,KA06TP0424,Car,Honda,Amaze,Black,Offending Vehicle
+72,426,KA06L7246,Car,Toyota,Innova,Red,Transport Vehicle
+73,428,KA61KH1714,Two-Wheeler,Yamaha,Fascino,Black,Offending Vehicle
+74,435,KA12FC6623,Car,Honda,City,Green,Transport Vehicle
+75,457,KA25RM7243,Two-Wheeler,TVS,Ntorq,White,Getaway Vehicle
+76,494,KA71N1528,SUV,Mahindra,Bolero,Red,Transport Vehicle
+77,495,KA20YG4480,Car,Maruti Suzuki,Baleno,Black,Stolen Vehicle
+78,502,KA66W4527,Bus,Ashok Leyland,Lynx,Grey,Transport Vehicle
+79,510,KA39WL7936,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Red,Offending Vehicle
+80,520,KA42Z3913,Two-Wheeler,Royal Enfield,Bullet 350,Green,Stolen Vehicle
+81,529,KA49ZV2493,Mini-Truck / Goods Carrier,Tata,407,Green,Offending Vehicle
+82,531,KA68AD2530,Two-Wheeler,Hero,Glamour,Black,Transport Vehicle
+83,533,KA11WW6227,Car,Tata,Nexon,Maroon,Stolen Vehicle
+84,538,KA31ZU7111,Two-Wheeler,Royal Enfield,Classic 350,Black,Offending Vehicle
+85,556,KA08JK4001,Mini-Truck / Goods Carrier,Tata,Ace,Blue,Transport Vehicle
+86,558,KA49M9555,Mini-Truck / Goods Carrier,Tata,Ace,Black,Offending Vehicle
+87,563,KA02XS2589,Car,Tata,Nexon,Red,Getaway Vehicle
+88,570,KA59EJ7917,Two-Wheeler,Bajaj,CT 100,Red,Transport Vehicle
+89,571,KA03GP0804,Car,Tata,Altroz,Red,Offending Vehicle
+90,596,KA18X0646,Bus,Ashok Leyland,Viking,Red,Offending Vehicle
+91,606,KA17NY2696,Car,Honda,City,Grey,Offending Vehicle
+92,607,KA60D3697,Two-Wheeler,Bajaj,Avenger,Black,Offending Vehicle
+93,619,KA59SS9578,Car,Maruti Suzuki,Alto,Black,Offending Vehicle
+94,623,KA04YF1036,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Green,Transport Vehicle
+95,633,KA06H8072,Car,Honda,City,Silver,Offending Vehicle
+96,635,KA70PT6798,Two-Wheeler,TVS,Ntorq,Blue,Offending Vehicle
+97,642,KA31CS8921,Two-Wheeler,Honda,Dio,Green,Offending Vehicle
+98,654,KA28B5465,Car,Maruti Suzuki,Baleno,Black,Getaway Vehicle
+99,663,KA30UV9765,Car,Toyota,Innova,Grey,Transport Vehicle
+100,664,KA15D5870,Car,Hyundai,Venue,Silver,Transport Vehicle
+101,668,KA68U7803,Two-Wheeler,Hero,HF Deluxe,Maroon,Offending Vehicle
+102,669,KA67LZ0997,Bus,Tata,Starbus,White,Transport Vehicle
+103,674,KA10H2431,Two-Wheeler,Hero,Glamour,Green,Stolen Vehicle
+104,678,KA68LP1625,SUV,Tata,Harrier,Maroon,Offending Vehicle
+105,684,KA58K7431,SUV,Tata,Safari,Maroon,Getaway Vehicle
+106,691,KA20BW1528,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Blue,Transport Vehicle
+107,692,KA16JS6930,Car,Hyundai,i10,Blue,Transport Vehicle
+108,715,KA15PV9191,Two-Wheeler,Hero,Passion Pro,Blue,Offending Vehicle
+109,732,KA35YJ2973,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Silver,Offending Vehicle
+110,735,KA04U3525,Two-Wheeler,TVS,Apache RTR,Silver,Stolen Vehicle
+111,738,KA11D0816,Car,Tata,Altroz,Blue,Offending Vehicle
+112,742,KA35U1865,Two-Wheeler,TVS,Ntorq,Maroon,Offending Vehicle
+113,745,KA06K9820,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Red,Offending Vehicle
+114,752,KA42A7056,Mini-Truck / Goods Carrier,Tata,407,Red,Offending Vehicle
+115,755,KA51L7533,SUV,Tata,Harrier,Black,Transport Vehicle
+116,759,KA52Z2816,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Black,Offending Vehicle
+117,762,KA32PN6485,SUV,Mahindra,Thar,Black,Offending Vehicle
+118,772,KA45TV2420,Two-Wheeler,Royal Enfield,Meteor 350,Grey,Offending Vehicle
+119,772,KA23U1235,Car,Hyundai,Venue,Grey,Offending Vehicle
+120,780,KA42DB7246,Two-Wheeler,Royal Enfield,Meteor 350,Green,Offending Vehicle
+121,783,KA60AJ4704,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Red,Transport Vehicle
+122,790,KA60L9367,Car,Maruti Suzuki,Dzire,Maroon,Getaway Vehicle
+123,796,KA44M2828,Mini-Truck / Goods Carrier,Tata,407,Black,Transport Vehicle
+124,800,KA48JU9796,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Blue,Transport Vehicle
+125,805,KA37TS9875,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Maroon,Transport Vehicle
+126,824,KA17H6172,Two-Wheeler,Yamaha,R15,Maroon,Transport Vehicle
+127,831,KA66AH3510,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Maroon,Offending Vehicle
+128,839,KA20G1658,Car,Hyundai,i20,Silver,Stolen Vehicle
+129,841,KA17DE2713,Car,Toyota,Innova,Blue,Stolen Vehicle
+130,848,KA37FF7685,Two-Wheeler,Bajaj,Platina,Green,Stolen Vehicle
+131,858,KA37MK2656,Two-Wheeler,Royal Enfield,Bullet 350,Green,Offending Vehicle
+132,867,KA67G2627,Car,Honda,Amaze,Black,Getaway Vehicle
+133,870,KA58YK6496,Car,Honda,City,Grey,Offending Vehicle
+134,881,KA43D4701,Car,Maruti Suzuki,Alto,Black,Transport Vehicle
+135,884,KA01A3534,Two-Wheeler,Yamaha,Fascino,Green,Offending Vehicle
+136,886,KA37G0783,Two-Wheeler,Royal Enfield,Bullet 350,Black,Offending Vehicle
+137,889,KA19KR3942,Car,Honda,City,Grey,Transport Vehicle
+138,896,KA68J7703,SUV,Tata,Harrier,Black,Getaway Vehicle
+139,897,KA46H1699,Two-Wheeler,Bajaj,Avenger,White,Stolen Vehicle
+140,907,KA24B7499,Car,Hyundai,Creta,Green,Transport Vehicle
+141,911,KA66ZN4151,SUV,Mahindra,XUV500,Red,Offending Vehicle
+142,912,KA43CJ6554,Two-Wheeler,Bajaj,Avenger,White,Getaway Vehicle
+143,919,KA11BP2957,Two-Wheeler,TVS,Star City,Red,Offending Vehicle
+144,926,KA58DL7326,Two-Wheeler,Yamaha,Fascino,Red,Stolen Vehicle
+145,927,KA10JV2622,Mini-Truck / Goods Carrier,Mahindra,Jeeto,White,Transport Vehicle
+146,936,KA31JY0531,Two-Wheeler,Hero,HF Deluxe,Black,Transport Vehicle
+147,948,KA41FC3049,SUV,Tata,Harrier,Maroon,Transport Vehicle
+148,954,KA28SZ3280,Car,Tata,Nexon,Green,Transport Vehicle
+149,955,KA12ST9012,Two-Wheeler,TVS,Jupiter,Green,Getaway Vehicle
+150,956,KA16V3879,Car,Hyundai,Venue,Grey,Transport Vehicle
+151,971,KA12H7843,SUV,Toyota,Fortuner,Silver,Getaway Vehicle
+152,976,KA10LM2103,Bus,Ashok Leyland,Viking,Blue,Offending Vehicle
+153,983,KA39D3695,Two-Wheeler,Hero,Splendor Plus,Silver,Offending Vehicle
+154,1001,KA65P9514,Car,Hyundai,Venue,Black,Transport Vehicle
+155,1003,KA04B9450,Two-Wheeler,Royal Enfield,Bullet 350,White,Transport Vehicle
+156,1004,KA70RG4013,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Green,Transport Vehicle
+157,1010,KA54LH2354,Car,Maruti Suzuki,WagonR,Green,Offending Vehicle
+158,1041,KA16LD0830,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Green,Transport Vehicle
+159,1050,KA41U8164,Two-Wheeler,Honda,Shine,Blue,Offending Vehicle
+160,1053,KA51ZE5782,Car,Honda,City,Black,Stolen Vehicle
+161,1054,KA37W7061,Two-Wheeler,Yamaha,R15,Green,Offending Vehicle
+162,1058,KA06BN5940,Car,Tata,Nexon,Blue,Getaway Vehicle
+163,1069,KA13JZ9140,Two-Wheeler,Bajaj,Pulsar 150,Silver,Offending Vehicle
+164,1071,KA06D5457,Car,Toyota,Etios,White,Offending Vehicle
+165,1077,KA41K4903,Two-Wheeler,Royal Enfield,Classic 350,Blue,Offending Vehicle
+166,1078,KA03HC6825,Two-Wheeler,TVS,Star City,Green,Offending Vehicle
+167,1095,KA62N6230,SUV,Tata,Safari,White,Offending Vehicle
+168,1105,KA57KK3341,Car,Maruti Suzuki,WagonR,White,Transport Vehicle
+169,1109,KA67N7838,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Transport Vehicle
+170,1114,KA34EF9144,Car,Toyota,Etios,Blue,Offending Vehicle
+171,1116,KA41JY4481,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Green,Offending Vehicle
+172,1145,KA06YB7248,Two-Wheeler,Bajaj,Platina,Red,Offending Vehicle
+173,1151,KA18R9615,Car,Toyota,Etios,Red,Offending Vehicle
+174,1152,KA13HL2253,Mini-Truck / Goods Carrier,Tata,Ace,White,Transport Vehicle
+175,1152,KA61RU4707,Car,Toyota,Innova,Maroon,Transport Vehicle
+176,1165,KA23Z6505,Car,Maruti Suzuki,WagonR,Maroon,Offending Vehicle
+177,1167,KA39Y5490,Bus,Tata,Starbus,White,Offending Vehicle
+178,1170,KA35V5418,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Green,Transport Vehicle
+179,1171,KA38E6644,Car,Hyundai,i10,Blue,Transport Vehicle
+180,1172,KA62YA6285,Car,Maruti Suzuki,WagonR,Silver,Offending Vehicle
+181,1173,KA47B1937,SUV,Toyota,Fortuner,Red,Offending Vehicle
+182,1182,KA38RF2189,SUV,Tata,Harrier,Black,Offending Vehicle
+183,1207,KA11NJ9244,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Transport Vehicle
+184,1211,KA22WL3366,Car,Toyota,Innova,Silver,Getaway Vehicle
+185,1221,KA60TK0050,Car,Honda,Amaze,White,Transport Vehicle
+186,1221,KA55TN0988,SUV,Tata,Safari,White,Transport Vehicle
+187,1228,KA24U6888,SUV,Mahindra,XUV500,Maroon,Offending Vehicle
+188,1228,KA49S8836,Two-Wheeler,TVS,Ntorq,Maroon,Offending Vehicle
+189,1233,KA68T3649,Two-Wheeler,Hero,HF Deluxe,Maroon,Getaway Vehicle
+190,1275,KA54F1103,Mini-Truck / Goods Carrier,Tata,Ace,White,Transport Vehicle
+191,1281,KA06LN0925,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Transport Vehicle
+192,1281,KA42G2348,Car,Tata,Tiago,Blue,Transport Vehicle
+193,1287,KA55BH6245,Two-Wheeler,Royal Enfield,Meteor 350,Silver,Offending Vehicle
+194,1296,KA31G2366,Car,Honda,City,Green,Transport Vehicle
+195,1321,KA58CT3121,Car,Hyundai,Venue,Black,Offending Vehicle
+196,1322,KA28EX4968,Mini-Truck / Goods Carrier,Tata,Ace,Grey,Offending Vehicle
+197,1331,KA32K3922,Auto-Rickshaw,TVS,King Duramax,Green,Getaway Vehicle
+198,1336,KA40JX7636,Two-Wheeler,Royal Enfield,Meteor 350,Blue,Offending Vehicle
+199,1342,KA41BW2391,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Blue,Transport Vehicle
+200,1343,KA20H6224,Two-Wheeler,Yamaha,Fascino,Red,Offending Vehicle
+201,1362,KA63DV2774,Car,Tata,Nexon,Green,Transport Vehicle
+202,1364,KA10U6757,Car,Toyota,Innova,White,Offending Vehicle
+203,1374,KA28JR7917,SUV,Mahindra,Bolero,White,Getaway Vehicle
+204,1385,KA68NG8229,Two-Wheeler,TVS,Apache RTR,White,Stolen Vehicle
+205,1393,KA25VG6503,Two-Wheeler,Hero,HF Deluxe,Grey,Offending Vehicle
+206,1397,KA11C6214,Car,Hyundai,i20,Red,Offending Vehicle
+207,1398,KA64RH1563,SUV,Tata,Safari,Black,Transport Vehicle
+208,1400,KA06S4594,Car,Toyota,Etios,Red,Offending Vehicle
+209,1409,KA10DF6376,Car,Hyundai,i20,Maroon,Offending Vehicle
+210,1411,KA65BL1246,Two-Wheeler,Yamaha,FZ,Black,Offending Vehicle
+211,1413,KA35MJ6151,Two-Wheeler,TVS,Star City,White,Transport Vehicle
+212,1415,KA10G6226,Two-Wheeler,Royal Enfield,Bullet 350,Grey,Offending Vehicle
+213,1431,KA35D3071,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Blue,Transport Vehicle
+214,1434,KA04J1525,SUV,Tata,Harrier,Black,Getaway Vehicle
+215,1448,KA32S2778,Car,Honda,Amaze,Black,Offending Vehicle
+216,1450,KA36GV5917,Mini-Truck / Goods Carrier,Tata,Ace,Maroon,Transport Vehicle
+217,1452,KA14H6484,SUV,Tata,Safari,Green,Offending Vehicle
+218,1457,KA56G9884,Car,Tata,Nexon,Blue,Transport Vehicle
+219,1471,KA63H4593,Car,Honda,Amaze,Red,Offending Vehicle
+220,1477,KA71Y7564,Two-Wheeler,Royal Enfield,Classic 350,Silver,Stolen Vehicle
+221,1479,KA18FS6933,Car,Maruti Suzuki,Baleno,Green,Stolen Vehicle
+222,1484,KA70V5891,SUV,Toyota,Fortuner,Maroon,Offending Vehicle
+223,1484,KA32DR9228,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Offending Vehicle
+224,1507,KA13FU9143,Car,Honda,City,White,Transport Vehicle
+225,1512,KA45M4841,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Silver,Transport Vehicle
+226,1515,KA40LE7913,Two-Wheeler,Yamaha,FZ,Blue,Offending Vehicle
+227,1517,KA39V1886,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Black,Offending Vehicle
+228,1524,KA71H6986,Car,Hyundai,i20,Silver,Transport Vehicle
+229,1530,KA56AR3233,Two-Wheeler,TVS,Jupiter,Silver,Stolen Vehicle
+230,1535,KA09V8797,Car,Hyundai,i20,Red,Transport Vehicle
+231,1538,KA50PJ7502,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Blue,Transport Vehicle
+232,1552,KA16H3000,Mini-Truck / Goods Carrier,Tata,Ace,Blue,Offending Vehicle
+233,1555,KA55M8805,Car,Toyota,Innova,Maroon,Transport Vehicle
+234,1576,KA02DV9201,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Blue,Transport Vehicle
+235,1595,KA38G8809,Two-Wheeler,Hero,Splendor Plus,Grey,Offending Vehicle
+236,1600,KA35NU7232,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Black,Offending Vehicle
+237,1606,KA58JV7194,Car,Hyundai,Venue,White,Offending Vehicle
+238,1610,KA22V3391,Car,Toyota,Etios,Maroon,Transport Vehicle
+239,1616,KA42GG8429,Two-Wheeler,Royal Enfield,Meteor 350,Silver,Stolen Vehicle
+240,1623,KA17D5278,Two-Wheeler,Hero,Passion Pro,Silver,Transport Vehicle
+241,1624,KA54LR1526,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Red,Offending Vehicle
+242,1626,KA42W1527,Car,Tata,Nexon,Green,Transport Vehicle
+243,1654,KA64HG8968,Two-Wheeler,Honda,Dio,Grey,Offending Vehicle
+244,1654,KA07C7530,Two-Wheeler,Royal Enfield,Bullet 350,Blue,Offending Vehicle
+245,1656,KA26X4946,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Maroon,Transport Vehicle
+246,1657,KA48B5006,Car,Tata,Nexon,Black,Offending Vehicle
+247,1679,KA67AS1976,Mini-Truck / Goods Carrier,Tata,Ace,Grey,Transport Vehicle
+248,1692,KA14JG6271,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Black,Transport Vehicle
+249,1705,KA57TR2481,Car,Toyota,Innova,Silver,Offending Vehicle
+250,1732,KA45HD4538,Two-Wheeler,Honda,Activa,Maroon,Getaway Vehicle
+251,1735,KA39M8349,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,White,Transport Vehicle
+252,1737,KA15M9731,SUV,Mahindra,Thar,Maroon,Offending Vehicle
+253,1745,KA50JS7718,Car,Tata,Nexon,Silver,Offending Vehicle
+254,1761,KA65RM6807,Mini-Truck / Goods Carrier,Tata,Ace,Maroon,Transport Vehicle
+255,1761,KA36H8378,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Silver,Transport Vehicle
+256,1772,KA56B1413,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Red,Transport Vehicle
+257,1784,KA18D5681,Car,Hyundai,i10,White,Offending Vehicle
+258,1787,KA35U0481,Car,Hyundai,Venue,Silver,Transport Vehicle
+259,1790,KA59BW2735,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Green,Transport Vehicle
+260,1791,KA66B0202,Car,Toyota,Innova,Grey,Transport Vehicle
+261,1793,KA71FF5242,Car,Hyundai,i20,White,Offending Vehicle
+262,1794,KA29Y1130,Car,Toyota,Innova,Silver,Transport Vehicle
+263,1794,KA12AE9238,SUV,Toyota,Fortuner,Blue,Transport Vehicle
+264,1799,KA20Y0392,Two-Wheeler,TVS,Jupiter,Grey,Offending Vehicle
+265,1800,KA49CN3903,Car,Maruti Suzuki,Alto,White,Transport Vehicle
+266,1802,KA06X8516,Car,Hyundai,Venue,Black,Transport Vehicle
+267,1820,KA65R6462,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Transport Vehicle
+268,1821,KA34YK5346,Car,Hyundai,i20,Red,Offending Vehicle
+269,1833,KA14L5146,Two-Wheeler,Royal Enfield,Classic 350,Silver,Getaway Vehicle
+270,1851,KA16D4985,Car,Tata,Nexon,Red,Offending Vehicle
+271,1869,KA51S4263,Two-Wheeler,Hero,HF Deluxe,Blue,Offending Vehicle
+272,1871,KA60V2291,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Black,Offending Vehicle
+273,1873,KA52SY1377,SUV,Mahindra,Bolero,Grey,Transport Vehicle
+274,1873,KA09X7266,SUV,Toyota,Fortuner,White,Transport Vehicle
+275,1883,KA07Y7097,Car,Maruti Suzuki,Swift,Green,Transport Vehicle
+276,1898,KA36XA4027,Car,Hyundai,i20,Red,Offending Vehicle
+277,1905,KA36DE8615,SUV,Toyota,Fortuner,Black,Transport Vehicle
+278,1918,KA45JE5225,Car,Tata,Nexon,Green,Getaway Vehicle
+279,1923,KA68UZ2616,Two-Wheeler,Bajaj,Pulsar 150,Green,Offending Vehicle
+280,1923,KA29JW2847,Car,Hyundai,Venue,White,Offending Vehicle
+281,1924,KA46N3085,Two-Wheeler,Yamaha,Fascino,White,Transport Vehicle
+282,1930,KA12F3585,Car,Hyundai,Creta,White,Offending Vehicle
+283,1937,KA44Y5302,Two-Wheeler,Royal Enfield,Classic 350,Silver,Offending Vehicle
+284,1938,KA10TS9602,SUV,Mahindra,Scorpio,Blue,Offending Vehicle
+285,1946,KA63EZ5847,Two-Wheeler,Honda,Shine,Maroon,Getaway Vehicle
+286,1950,KA38E0030,SUV,Mahindra,Thar,Red,Getaway Vehicle
+287,1966,KA29Y2305,Car,Maruti Suzuki,WagonR,Blue,Transport Vehicle
+288,1967,KA43AE1111,Car,Tata,Tiago,Black,Transport Vehicle
+289,1967,KA50TZ6784,Car,Maruti Suzuki,Swift,White,Transport Vehicle
+290,1969,KA62D1208,Two-Wheeler,Royal Enfield,Bullet 350,Black,Stolen Vehicle
+291,1976,KA22DB1526,Mini-Truck / Goods Carrier,Tata,Ace,Blue,Transport Vehicle
+292,1976,KA56P7114,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,White,Transport Vehicle
+293,1977,KA37FB9368,Car,Hyundai,Creta,Red,Offending Vehicle
+294,1979,KA38EA2799,Car,Maruti Suzuki,Baleno,Black,Transport Vehicle
+295,1981,KA61XG8915,Two-Wheeler,Hero,Passion Pro,Maroon,Offending Vehicle
+296,1987,KA60FG1010,Car,Maruti Suzuki,Alto,Green,Offending Vehicle
+297,1988,KA30W8562,Car,Tata,Altroz,Maroon,Offending Vehicle
+298,1989,KA39K0569,Two-Wheeler,TVS,Jupiter,Green,Transport Vehicle
+299,1994,KA58Y2739,Auto-Rickshaw,TVS,King Duramax,Black,Offending Vehicle
+300,2004,KA34XY1098,Car,Honda,City,Silver,Transport Vehicle
+301,2005,KA02CD9284,Car,Tata,Altroz,Green,Transport Vehicle
+302,2007,KA69XG7956,SUV,Mahindra,Scorpio,Red,Offending Vehicle
+303,2014,KA51SB7786,Car,Toyota,Etios,White,Offending Vehicle
+304,2027,KA30G7260,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Black,Transport Vehicle
+305,2035,KA57Y6672,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Offending Vehicle
+306,2054,KA68D3289,Two-Wheeler,Bajaj,CT 100,Silver,Stolen Vehicle
+307,2058,KA48MR2030,Two-Wheeler,Bajaj,Platina,Red,Offending Vehicle
+308,2067,KA21US4671,Two-Wheeler,TVS,Star City,Blue,Offending Vehicle
+309,2070,KA27RM0146,Mini-Truck / Goods Carrier,Tata,Ace,Grey,Offending Vehicle
+310,2070,KA29PY4512,Car,Hyundai,i20,White,Offending Vehicle
+311,2071,KA28GM6507,Car,Tata,Nexon,Red,Getaway Vehicle
+312,2077,KA14BZ5328,Two-Wheeler,Bajaj,Avenger,Red,Transport Vehicle
+313,2095,KA67X9831,SUV,Toyota,Fortuner,Silver,Transport Vehicle
+314,2097,KA34KT9553,Mini-Truck / Goods Carrier,Tata,407,Red,Transport Vehicle
+315,2103,KA65WW9147,Two-Wheeler,Honda,Dio,Blue,Offending Vehicle
+316,2105,KA12J5032,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Blue,Transport Vehicle
+317,2120,KA10XM6254,Bus,Ashok Leyland,Lynx,White,Transport Vehicle
+318,2133,KA41U7989,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Transport Vehicle
+319,2140,KA36U2763,Mini-Truck / Goods Carrier,Tata,Ace,Green,Transport Vehicle
+320,2145,KA52ZJ0619,SUV,Mahindra,Thar,Maroon,Transport Vehicle
+321,2153,KA32S5642,Bus,Ashok Leyland,Viking,White,Offending Vehicle
+322,2154,KA06YL8525,Car,Tata,Tiago,Black,Offending Vehicle
+323,2170,KA25Y6610,Car,Tata,Nexon,Blue,Transport Vehicle
+324,2171,KA16TV6148,Mini-Truck / Goods Carrier,Tata,Ace,Silver,Offending Vehicle
+325,2180,KA07K6231,Car,Maruti Suzuki,Swift,White,Transport Vehicle
+326,2184,KA54S4424,Mini-Truck / Goods Carrier,Tata,Ace,Red,Offending Vehicle
+327,2206,KA15M9978,Mini-Truck / Goods Carrier,Tata,Ace,Red,Transport Vehicle
+328,2207,KA38A8133,Car,Hyundai,Venue,Maroon,Offending Vehicle
+329,2216,KA20U1230,Car,Maruti Suzuki,Dzire,Green,Offending Vehicle
+330,2216,KA59GB2863,Mini-Truck / Goods Carrier,Tata,407,Grey,Offending Vehicle
+331,2225,KA02S2794,Mini-Truck / Goods Carrier,Tata,Ace,White,Transport Vehicle
+332,2230,KA44C6558,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Blue,Transport Vehicle
+333,2240,KA17Z2612,Car,Honda,City,Black,Transport Vehicle
+334,2244,KA49RW2141,Car,Toyota,Etios,Silver,Transport Vehicle
+335,2250,KA02Z5543,Two-Wheeler,Hero,Passion Pro,Blue,Offending Vehicle
+336,2253,KA45DW0895,Bus,Tata,Starbus,Green,Transport Vehicle
+337,2259,KA10HH4558,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Silver,Transport Vehicle
+338,2261,KA59VL8167,SUV,Toyota,Fortuner,Black,Offending Vehicle
+339,2264,KA53N0003,Bus,Ashok Leyland,Viking,Maroon,Transport Vehicle
+340,2277,KA59JB3653,Two-Wheeler,Royal Enfield,Meteor 350,Grey,Offending Vehicle
+341,2285,KA47CU3634,Two-Wheeler,Royal Enfield,Meteor 350,Green,Stolen Vehicle
+342,2287,KA06M6705,Two-Wheeler,Bajaj,Avenger,Black,Offending Vehicle
+343,2292,KA25CK9648,Car,Honda,City,Green,Offending Vehicle
+344,2293,KA64N0796,Two-Wheeler,Royal Enfield,Meteor 350,Silver,Offending Vehicle
+345,2294,KA17J9840,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Transport Vehicle
+346,2305,KA51ZL2186,Two-Wheeler,TVS,Jupiter,Red,Getaway Vehicle
+347,2312,KA71E4761,Car,Toyota,Etios,Blue,Stolen Vehicle
+348,2318,KA46PY6840,Mini-Truck / Goods Carrier,Tata,407,Black,Offending Vehicle
+349,2324,KA04DS3276,Bus,Tata,Starbus,Black,Offending Vehicle
+350,2334,KA19S4836,Car,Tata,Altroz,Red,Stolen Vehicle
+351,2335,KA50M4713,Car,Honda,City,Grey,Transport Vehicle
+352,2343,KA33R7260,Bus,Tata,Starbus,White,Transport Vehicle
+353,2345,KA25LZ1221,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Offending Vehicle
+354,2346,KA06GG2637,Car,Toyota,Innova,Maroon,Getaway Vehicle
+355,2347,KA20PU4935,Two-Wheeler,Yamaha,FZ,White,Offending Vehicle
+356,2350,KA24V2612,Car,Tata,Altroz,Grey,Offending Vehicle
+357,2355,KA47FU8692,Car,Hyundai,Venue,Blue,Getaway Vehicle
+358,2357,KA31Z5259,Two-Wheeler,Hero,Passion Pro,Green,Offending Vehicle
+359,2361,KA70AM6144,Two-Wheeler,Hero,Glamour,Red,Getaway Vehicle
+360,2367,KA66Y2743,Bus,Tata,Starbus,Blue,Transport Vehicle
+361,2385,KA27RY2520,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Transport Vehicle
+362,2387,KA07V9144,Car,Maruti Suzuki,Swift,Black,Stolen Vehicle
+363,2393,KA52HJ1939,SUV,Toyota,Fortuner,Green,Offending Vehicle
+364,2404,KA38PG7171,Car,Maruti Suzuki,Alto,Black,Offending Vehicle
+365,2407,KA51ZD6114,Car,Hyundai,i20,Silver,Offending Vehicle
+366,2415,KA01NY4993,Two-Wheeler,Honda,Activa,White,Getaway Vehicle
+367,2417,KA21F4141,Mini-Truck / Goods Carrier,Tata,407,Silver,Offending Vehicle
+368,2418,KA71G1104,Car,Toyota,Innova,Green,Getaway Vehicle
+369,2429,KA13RX5207,Car,Tata,Tiago,Grey,Transport Vehicle
+370,2445,KA55A4034,Car,Hyundai,Venue,Blue,Transport Vehicle
+371,2463,KA58UM1784,Bus,Tata,Starbus,Green,Transport Vehicle
+372,2468,KA10X8310,Car,Hyundai,i20,Red,Transport Vehicle
+373,2478,KA70SD6431,Car,Maruti Suzuki,Dzire,Red,Offending Vehicle
+374,2482,KA65K8228,Car,Tata,Tiago,Green,Stolen Vehicle
+375,2486,KA58E9271,Car,Toyota,Innova,Silver,Transport Vehicle
+376,2506,KA29FG3835,Car,Honda,Amaze,White,Stolen Vehicle
+377,2508,KA59A5310,Two-Wheeler,Bajaj,CT 100,Green,Transport Vehicle
+378,2510,KA49JS1276,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Silver,Transport Vehicle
+379,2522,KA45VX0109,SUV,Tata,Harrier,Blue,Offending Vehicle
+380,2525,KA20D9864,Mini-Truck / Goods Carrier,Tata,407,Grey,Transport Vehicle
+381,2541,KA62P6733,Car,Maruti Suzuki,Baleno,Green,Transport Vehicle
+382,2544,KA19D2950,Two-Wheeler,Honda,Shine,White,Transport Vehicle
+383,2544,KA11L7724,Two-Wheeler,TVS,Apache RTR,Red,Transport Vehicle
+384,2553,KA22YP1128,SUV,Tata,Safari,Red,Transport Vehicle
+385,2564,KA67WP2907,Car,Maruti Suzuki,Swift,Grey,Getaway Vehicle
+386,2567,KA12SX8836,Two-Wheeler,Royal Enfield,Meteor 350,Black,Offending Vehicle
+387,2586,KA45K4171,Car,Hyundai,Creta,Maroon,Transport Vehicle
+388,2586,KA70FA0117,Car,Hyundai,i10,Red,Transport Vehicle
+389,2588,KA47D9591,Car,Hyundai,Venue,Maroon,Getaway Vehicle
+390,2594,KA71EN7926,Car,Honda,City,Maroon,Transport Vehicle
+391,2597,KA16L2651,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Transport Vehicle
+392,2607,KA50V2382,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Offending Vehicle
+393,2609,KA50RM9789,Car,Tata,Tiago,White,Offending Vehicle
+394,2611,KA26EV8365,Car,Honda,Amaze,White,Transport Vehicle
+395,2618,KA12UJ6475,Two-Wheeler,Honda,Activa,Silver,Offending Vehicle
+396,2619,KA71TN9551,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Transport Vehicle
+397,2629,KA52G6671,Car,Toyota,Innova,Green,Transport Vehicle
+398,2631,KA69SZ9227,Bus,Tata,Starbus,Red,Transport Vehicle
+399,2633,KA04CB3611,Car,Tata,Nexon,Green,Getaway Vehicle
+400,2642,KA32CS5604,Two-Wheeler,Bajaj,Pulsar 150,Red,Getaway Vehicle
+401,2648,KA24M3272,Bus,Tata,Starbus,Red,Transport Vehicle
+402,2650,KA46U1965,Car,Hyundai,i20,Grey,Offending Vehicle
+403,2656,KA62RM9413,Car,Honda,City,White,Stolen Vehicle
+404,2687,KA68MN8233,Car,Toyota,Innova,White,Offending Vehicle
+405,2699,KA41A3453,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Green,Offending Vehicle
+406,2706,KA35ZH3014,Car,Hyundai,Venue,Grey,Transport Vehicle
+407,2709,KA36ED9436,Car,Tata,Nexon,Maroon,Transport Vehicle
+408,2710,KA49D2451,Car,Tata,Tiago,Maroon,Stolen Vehicle
+409,2721,KA39NP6528,Car,Toyota,Etios,Green,Transport Vehicle
+410,2722,KA58FJ9134,Two-Wheeler,Bajaj,CT 100,Black,Offending Vehicle
+411,2739,KA37HM7323,Two-Wheeler,Royal Enfield,Classic 350,Silver,Transport Vehicle
+412,2755,KA52B5630,Car,Hyundai,Venue,Maroon,Offending Vehicle
+413,2757,KA35UY9617,Car,Tata,Altroz,Maroon,Offending Vehicle
+414,2764,KA27K1566,Mini-Truck / Goods Carrier,Tata,407,Black,Transport Vehicle
+415,2779,KA14RB6388,Car,Maruti Suzuki,Baleno,Black,Transport Vehicle
+416,2783,KA04S5329,Car,Hyundai,i20,Silver,Offending Vehicle
+417,2786,KA70P7481,SUV,Tata,Harrier,Silver,Offending Vehicle
+418,2787,KA45NV7240,Two-Wheeler,Royal Enfield,Meteor 350,Red,Offending Vehicle
+419,2798,KA45LA8060,Car,Maruti Suzuki,Swift,Silver,Offending Vehicle
+420,2829,KA25XL4095,Car,Hyundai,i10,Blue,Transport Vehicle
+421,2831,KA11RM4455,Two-Wheeler,TVS,Jupiter,Red,Offending Vehicle
+422,2833,KA24G7461,SUV,Toyota,Fortuner,Black,Transport Vehicle
+423,2843,KA69E1676,Car,Maruti Suzuki,WagonR,White,Offending Vehicle
+424,2850,KA20M5602,Mini-Truck / Goods Carrier,Tata,Ace,Black,Transport Vehicle
+425,2867,KA19G6430,Car,Maruti Suzuki,Alto,Black,Transport Vehicle
+426,2870,KA16J7258,Car,Tata,Nexon,White,Transport Vehicle
+427,2887,KA40DT9005,Car,Hyundai,Creta,Maroon,Offending Vehicle
+428,2897,KA31HD4524,SUV,Tata,Safari,Black,Transport Vehicle
+429,2904,KA48F8191,Two-Wheeler,Hero,Glamour,Silver,Stolen Vehicle
+430,2907,KA46T1760,SUV,Tata,Safari,White,Getaway Vehicle
+431,2908,KA25S5869,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Green,Offending Vehicle
+432,2917,KA25N5304,Car,Honda,Amaze,Green,Offending Vehicle
+433,2927,KA68L4315,Car,Toyota,Innova,Black,Stolen Vehicle
+434,2970,KA25UD4639,Two-Wheeler,Bajaj,Pulsar 150,Maroon,Offending Vehicle
+435,2974,KA17X3311,Car,Toyota,Innova,White,Transport Vehicle
+436,2977,KA07FT0215,Car,Honda,Amaze,Red,Offending Vehicle
+437,2992,KA47VV0956,Two-Wheeler,Hero,Glamour,White,Offending Vehicle
+438,2996,KA28C3785,Two-Wheeler,Hero,Passion Pro,Black,Getaway Vehicle
+439,3001,KA46TK1706,Car,Hyundai,Creta,Black,Transport Vehicle
+440,3002,KA46NZ6091,Two-Wheeler,Bajaj,Platina,Green,Offending Vehicle
+441,3013,KA58ZA0568,SUV,Toyota,Fortuner,Blue,Offending Vehicle
+442,3029,KA41U4522,Two-Wheeler,Bajaj,Platina,Grey,Offending Vehicle
+443,3034,KA46D6015,Two-Wheeler,Hero,Splendor Plus,Green,Offending Vehicle
+444,3036,KA28T7906,Two-Wheeler,Bajaj,Pulsar 150,Maroon,Stolen Vehicle
+445,3037,KA05BB5479,Car,Toyota,Innova,Red,Getaway Vehicle
+446,3040,KA49H0675,Bus,Ashok Leyland,Viking,White,Transport Vehicle
+447,3045,KA29GK2166,Car,Honda,Amaze,Black,Transport Vehicle
+448,3048,KA11MU2137,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Red,Offending Vehicle
+449,3067,KA32G7047,Car,Toyota,Innova,Grey,Getaway Vehicle
+450,3069,KA55JH9731,Mini-Truck / Goods Carrier,Tata,Ace,Maroon,Getaway Vehicle
+451,3083,KA06E6125,Car,Honda,City,Green,Transport Vehicle
+452,3086,KA19AS1824,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Transport Vehicle
+453,3092,KA27NR2316,Two-Wheeler,Bajaj,Platina,Grey,Stolen Vehicle
+454,3104,KA37V4445,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,White,Transport Vehicle
+455,3107,KA14G6333,Car,Honda,Amaze,Blue,Offending Vehicle
+456,3113,KA69E8203,Two-Wheeler,Hero,Passion Pro,Green,Transport Vehicle
+457,3128,KA03SJ4954,Car,Honda,Amaze,Silver,Offending Vehicle
+458,3132,KA04FH6437,Car,Maruti Suzuki,Alto,Maroon,Transport Vehicle
+459,3133,KA54P6988,Two-Wheeler,Yamaha,R15,Grey,Offending Vehicle
+460,3144,KA18SX2216,Two-Wheeler,Honda,Shine,Grey,Stolen Vehicle
+461,3147,KA09E2385,Auto-Rickshaw,Bajaj,RE Compact,Blue,Stolen Vehicle
+462,3148,KA57DE2156,Bus,Tata,Starbus,Red,Offending Vehicle
+463,3151,KA30F0428,Two-Wheeler,Royal Enfield,Meteor 350,Red,Getaway Vehicle
+464,3153,KA48W8052,SUV,Toyota,Fortuner,Green,Getaway Vehicle
+465,3157,KA53U3324,Car,Honda,City,Red,Offending Vehicle
+466,3163,KA59K0686,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Blue,Transport Vehicle
+467,3171,KA58WA4026,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Black,Offending Vehicle
+468,3177,KA38KH4685,Car,Toyota,Innova,Grey,Transport Vehicle
+469,3188,KA24K5300,Car,Honda,City,Black,Transport Vehicle
+470,3198,KA33SX2687,SUV,Mahindra,Thar,Black,Transport Vehicle
+471,3205,KA11TZ2620,Two-Wheeler,Hero,Glamour,Blue,Stolen Vehicle
+472,3206,KA19U0841,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Silver,Offending Vehicle
+473,3208,KA16Z0058,SUV,Toyota,Fortuner,Silver,Transport Vehicle
+474,3217,KA31P7795,Two-Wheeler,TVS,Apache RTR,Green,Offending Vehicle
+475,3225,KA27E0903,Mini-Truck / Goods Carrier,Tata,Ace,Red,Transport Vehicle
+476,3227,KA12C2921,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Blue,Offending Vehicle
+477,3228,KA05U5290,Bus,Ashok Leyland,Lynx,Blue,Transport Vehicle
+478,3232,KA61C4497,Car,Honda,City,Red,Transport Vehicle
+479,3237,KA68M9909,Car,Hyundai,i10,Black,Transport Vehicle
+480,3246,KA17MR8070,Two-Wheeler,Bajaj,Avenger,Blue,Getaway Vehicle
+481,3271,KA16V6794,Car,Maruti Suzuki,Swift,Green,Offending Vehicle
+482,3273,KA26FB4920,Two-Wheeler,Yamaha,FZ,White,Offending Vehicle
+483,3275,KA04E5537,Car,Tata,Nexon,Maroon,Offending Vehicle
+484,3283,KA60YB8538,Car,Hyundai,Creta,Blue,Offending Vehicle
+485,3283,KA27VX5794,Car,Tata,Altroz,White,Offending Vehicle
+486,3292,KA69P6383,Two-Wheeler,Hero,Passion Pro,Maroon,Stolen Vehicle
+487,3297,KA05KM3894,Car,Tata,Altroz,Blue,Transport Vehicle
+488,3301,KA15VU1518,Car,Toyota,Etios,Silver,Offending Vehicle
+489,3306,KA62UD1610,Bus,Ashok Leyland,Viking,Blue,Transport Vehicle
+490,3306,KA05JW1898,Car,Toyota,Innova,Grey,Transport Vehicle
+491,3311,KA60C5120,Car,Toyota,Innova,Blue,Transport Vehicle
+492,3315,KA25GH7228,SUV,Mahindra,XUV500,Grey,Transport Vehicle
+493,3331,KA70NG4642,Car,Toyota,Innova,Grey,Offending Vehicle
+494,3337,KA17L0827,Two-Wheeler,Bajaj,CT 100,White,Stolen Vehicle
+495,3342,KA40VT8741,Mini-Truck / Goods Carrier,Tata,407,Blue,Transport Vehicle
+496,3342,KA60L7626,Car,Honda,City,Black,Transport Vehicle
+497,3355,KA43LA7788,Car,Tata,Nexon,Silver,Offending Vehicle
+498,3356,KA66K1753,SUV,Toyota,Fortuner,Silver,Transport Vehicle
+499,3368,KA71Z6289,Car,Honda,City,Grey,Getaway Vehicle
+500,3372,KA70D1277,Bus,Tata,Starbus,Blue,Transport Vehicle
+501,3380,KA40BC9772,Mini-Truck / Goods Carrier,Tata,407,Silver,Transport Vehicle
+502,3383,KA28X0004,Two-Wheeler,Yamaha,FZ,Black,Offending Vehicle
+503,3404,KA26S5188,Two-Wheeler,Bajaj,CT 100,Green,Stolen Vehicle
+504,3405,KA02WW1023,Bus,Tata,Starbus,Black,Transport Vehicle
+505,3406,KA37F9670,Car,Toyota,Etios,Black,Offending Vehicle
+506,3411,KA23DN5903,Car,Honda,Amaze,Grey,Offending Vehicle
+507,3415,KA03T7975,Bus,Ashok Leyland,Viking,Black,Transport Vehicle
+508,3431,KA24MN7374,Car,Honda,Amaze,Maroon,Getaway Vehicle
+509,3433,KA31KN6013,Car,Maruti Suzuki,Dzire,Green,Offending Vehicle
+510,3434,KA11T8625,Car,Tata,Tiago,Green,Transport Vehicle
+511,3434,KA67F1280,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Black,Transport Vehicle
+512,3445,KA59PH5783,Two-Wheeler,Royal Enfield,Classic 350,Green,Transport Vehicle
+513,3466,KA08PP4781,Two-Wheeler,Yamaha,Fascino,Red,Transport Vehicle
+514,3466,KA63C1260,Car,Toyota,Innova,Red,Transport Vehicle
+515,3468,KA02P9696,Car,Tata,Nexon,Red,Getaway Vehicle
+516,3472,KA31EN0543,Car,Tata,Tiago,Red,Stolen Vehicle
+517,3488,KA50S2741,Car,Hyundai,Creta,Maroon,Offending Vehicle
+518,3495,KA07L7803,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Transport Vehicle
+519,3502,KA50GN7123,Two-Wheeler,Royal Enfield,Classic 350,Maroon,Offending Vehicle
+520,3508,KA13YK4467,Car,Tata,Altroz,White,Transport Vehicle
+521,3514,KA31M2948,Car,Toyota,Etios,Green,Transport Vehicle
+522,3522,KA13S5760,Car,Maruti Suzuki,Swift,Maroon,Transport Vehicle
+523,3522,KA05R0932,Car,Tata,Nexon,Grey,Transport Vehicle
+524,3529,KA16W2129,Two-Wheeler,Royal Enfield,Meteor 350,Black,Offending Vehicle
+525,3544,KA33LY7430,SUV,Mahindra,Scorpio,Silver,Transport Vehicle
+526,3564,KA10UJ5451,Two-Wheeler,Bajaj,Avenger,Silver,Transport Vehicle
+527,3570,KA51R1777,Car,Maruti Suzuki,Baleno,Grey,Transport Vehicle
+528,3579,KA14B9361,Car,Maruti Suzuki,Baleno,Red,Offending Vehicle
+529,3587,KA05GT6412,Two-Wheeler,Yamaha,R15,White,Offending Vehicle
+530,3587,KA56WU1149,Car,Toyota,Etios,Green,Offending Vehicle
+531,3591,KA43KR1486,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Blue,Getaway Vehicle
+532,3602,KA38E0645,Car,Tata,Tiago,Green,Stolen Vehicle
+533,3626,KA25A0416,SUV,Toyota,Fortuner,Green,Getaway Vehicle
+534,3630,KA69ZA5559,Car,Toyota,Etios,Green,Offending Vehicle
+535,3631,KA69U3818,Car,Maruti Suzuki,WagonR,Green,Transport Vehicle
+536,3643,KA17D0819,Bus,Tata,Starbus,Grey,Transport Vehicle
+537,3646,KA15PR1034,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Offending Vehicle
+538,3655,KA16H3494,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Blue,Transport Vehicle
+539,3664,KA71L9536,Car,Honda,City,Blue,Transport Vehicle
+540,3679,KA03BA1461,Car,Toyota,Etios,Silver,Transport Vehicle
+541,3711,KA53Y0617,Car,Tata,Altroz,Green,Offending Vehicle
+542,3731,KA01E8687,Two-Wheeler,Bajaj,Avenger,Maroon,Stolen Vehicle
+543,3739,KA27BC2445,Car,Toyota,Innova,Green,Stolen Vehicle
+544,3740,KA07GK5478,Two-Wheeler,Honda,Shine,White,Offending Vehicle
+545,3741,KA21M1902,Two-Wheeler,Hero,Splendor Plus,Silver,Offending Vehicle
+546,3745,KA26FC3732,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Maroon,Transport Vehicle
+547,3747,KA61BL3542,Bus,Tata,Starbus,Black,Offending Vehicle
+548,3763,KA26CS0978,SUV,Tata,Harrier,Red,Transport Vehicle
+549,3764,KA29PV2785,Car,Honda,City,Blue,Transport Vehicle
+550,3787,KA67WE7758,Two-Wheeler,Honda,Activa,Maroon,Stolen Vehicle
+551,3791,KA56X9696,Car,Hyundai,i20,Blue,Transport Vehicle
+552,3807,KA55MV1606,Two-Wheeler,Yamaha,R15,White,Transport Vehicle
+553,3807,KA53D4847,Mini-Truck / Goods Carrier,Tata,Ace,White,Transport Vehicle
+554,3817,KA04LD6642,Car,Tata,Tiago,Green,Transport Vehicle
+555,3821,KA43G4421,Car,Maruti Suzuki,Swift,Maroon,Transport Vehicle
+556,3825,KA08XC5990,Car,Maruti Suzuki,Dzire,Blue,Transport Vehicle
+557,3829,KA18FC7840,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Grey,Transport Vehicle
+558,3829,KA42XM6930,Car,Toyota,Innova,Grey,Transport Vehicle
+559,3833,KA69LJ1076,Two-Wheeler,TVS,Apache RTR,Green,Stolen Vehicle
+560,3842,KA10D1836,Car,Honda,City,Red,Transport Vehicle
+561,3846,KA38ZN2164,Two-Wheeler,Royal Enfield,Meteor 350,White,Getaway Vehicle
+562,3852,KA38B3807,Two-Wheeler,Yamaha,R15,White,Stolen Vehicle
+563,3854,KA63LP5022,Two-Wheeler,Royal Enfield,Bullet 350,Blue,Offending Vehicle
+564,3859,KA46LD2635,Car,Tata,Tiago,Silver,Transport Vehicle
+565,3861,KA31A5188,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Silver,Offending Vehicle
+566,3863,KA19LZ8744,Car,Maruti Suzuki,Alto,Blue,Offending Vehicle
+567,3884,KA01RG4749,Car,Honda,Amaze,Silver,Offending Vehicle
+568,3892,KA44T0657,Two-Wheeler,Royal Enfield,Meteor 350,Green,Offending Vehicle
+569,3894,KA46H9964,Car,Honda,City,Green,Transport Vehicle
+570,3900,KA11SZ8386,Car,Tata,Tiago,White,Offending Vehicle
+571,3901,KA51T7007,Car,Toyota,Innova,Blue,Offending Vehicle
+572,3906,KA12T7279,Car,Tata,Nexon,Green,Transport Vehicle
+573,3912,KA12E7777,Car,Honda,Amaze,Silver,Transport Vehicle
+574,3918,KA01RG2866,Two-Wheeler,Royal Enfield,Bullet 350,Black,Transport Vehicle
+575,3933,KA06WG9164,Car,Honda,Amaze,Green,Getaway Vehicle
+576,3939,KA16KM4010,Car,Tata,Altroz,Green,Transport Vehicle
+577,3942,KA56RL1960,Mini-Truck / Goods Carrier,Tata,407,Green,Transport Vehicle
+578,3943,KA19LS5856,Car,Tata,Tiago,White,Offending Vehicle
+579,3946,KA38M3003,Two-Wheeler,Bajaj,Pulsar 150,Red,Offending Vehicle
+580,3953,KA13VA8490,Car,Tata,Nexon,Blue,Transport Vehicle
+581,3960,KA20W9154,Mini-Truck / Goods Carrier,Tata,Ace,Grey,Transport Vehicle
+582,3989,KA03JS2278,Two-Wheeler,Hero,Splendor Plus,Silver,Offending Vehicle
+583,4010,KA16C2333,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,White,Transport Vehicle
+584,4017,KA03UA1767,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Black,Transport Vehicle
+585,4020,KA06G0169,Two-Wheeler,TVS,Apache RTR,Red,Offending Vehicle
+586,4025,KA24AD4545,Car,Toyota,Innova,Grey,Stolen Vehicle
+587,4053,KA65C9473,Two-Wheeler,Yamaha,R15,Grey,Offending Vehicle
+588,4063,KA28JP7204,Car,Hyundai,i10,Black,Transport Vehicle
+589,4073,KA53U5150,Car,Honda,City,Grey,Transport Vehicle
+590,4076,KA37B8089,Car,Hyundai,Creta,Blue,Getaway Vehicle
+591,4082,KA29GW3094,Car,Toyota,Etios,Green,Getaway Vehicle
+592,4100,KA51NS1954,Two-Wheeler,Hero,Glamour,Black,Stolen Vehicle
+593,4104,KA47H9748,Mini-Truck / Goods Carrier,Tata,Ace,Black,Transport Vehicle
+594,4108,KA52LP6627,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Red,Transport Vehicle
+595,4122,KA18C0866,Car,Honda,Amaze,Grey,Offending Vehicle
+596,4124,KA42G1579,Two-Wheeler,Hero,HF Deluxe,Maroon,Stolen Vehicle
+597,4148,KA05XC7375,SUV,Tata,Harrier,White,Offending Vehicle
+598,4164,KA56H6375,Two-Wheeler,Bajaj,Platina,Green,Stolen Vehicle
+599,4169,KA21K8106,Car,Toyota,Etios,Green,Transport Vehicle
+600,4211,KA04JK5856,Two-Wheeler,Honda,Unicorn,Blue,Offending Vehicle
+601,4211,KA31PX1074,Car,Maruti Suzuki,WagonR,Grey,Offending Vehicle
+602,4220,KA59PX4369,Two-Wheeler,Royal Enfield,Bullet 350,White,Stolen Vehicle
+603,4223,KA42V1640,Car,Tata,Nexon,Maroon,Transport Vehicle
+604,4236,KA47ER1235,Car,Tata,Tiago,Red,Transport Vehicle
+605,4239,KA29T9474,Car,Maruti Suzuki,Alto,Maroon,Offending Vehicle
+606,4248,KA27VR4946,Car,Toyota,Etios,Maroon,Transport Vehicle
+607,4276,KA03P3490,Two-Wheeler,Royal Enfield,Bullet 350,Silver,Stolen Vehicle
+608,4294,KA08J2421,Two-Wheeler,Yamaha,R15,Maroon,Stolen Vehicle
+609,4297,KA09W4374,SUV,Toyota,Fortuner,Blue,Transport Vehicle
+610,4306,KA40MZ6915,Two-Wheeler,Honda,Activa,Grey,Offending Vehicle
+611,4309,KA36R0692,Car,Hyundai,i10,Red,Offending Vehicle
+612,4309,KA11PW6669,SUV,Toyota,Fortuner,White,Offending Vehicle
+613,4316,KA15N9510,Two-Wheeler,Yamaha,FZ,Grey,Offending Vehicle
+614,4329,KA50Y3572,Car,Maruti Suzuki,Alto,Blue,Transport Vehicle
+615,4335,KA08NT1851,Car,Honda,Amaze,Red,Transport Vehicle
+616,4339,KA61VA9926,Car,Tata,Tiago,Blue,Transport Vehicle
+617,4343,KA71HZ5946,SUV,Mahindra,Bolero,Red,Getaway Vehicle
+618,4349,KA02YY4930,Two-Wheeler,Honda,Dio,Maroon,Stolen Vehicle
+619,4351,KA21RX6657,Two-Wheeler,Honda,Unicorn,Grey,Getaway Vehicle
+620,4353,KA43XV2628,Car,Honda,Amaze,Maroon,Offending Vehicle
+621,4358,KA04R3011,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Green,Transport Vehicle
+622,4362,KA41C4090,Car,Honda,City,Red,Offending Vehicle
+623,4372,KA18DP5368,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Green,Offending Vehicle
+624,4374,KA03X7577,Car,Honda,City,White,Transport Vehicle
+625,4377,KA20Z2788,Mini-Truck / Goods Carrier,Mahindra,Jeeto,Red,Transport Vehicle
+626,4380,KA59CT3122,Two-Wheeler,Yamaha,R15,Maroon,Stolen Vehicle
+627,4394,KA24VA4290,Two-Wheeler,Bajaj,Platina,Maroon,Offending Vehicle
+628,4408,KA11L5297,Car,Hyundai,Venue,Green,Getaway Vehicle
+629,4416,KA13B3848,Car,Honda,Amaze,Black,Transport Vehicle
+630,4419,KA33GK6077,Car,Toyota,Innova,White,Getaway Vehicle
+631,4424,KA65YX2162,Car,Hyundai,Venue,Silver,Transport Vehicle
+632,4426,KA06M4604,Car,Tata,Tiago,Blue,Offending Vehicle
+633,4428,KA67LD8050,Car,Tata,Altroz,Red,Offending Vehicle
+634,4430,KA20F0588,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Grey,Offending Vehicle
+635,4437,KA57ZN7500,Two-Wheeler,Hero,Glamour,White,Offending Vehicle
+636,4440,KA27ED8336,SUV,Mahindra,XUV500,Black,Transport Vehicle
+637,4462,KA10U1546,Car,Toyota,Innova,Maroon,Transport Vehicle
+638,4464,KA42A7541,SUV,Toyota,Fortuner,Black,Offending Vehicle
+639,4466,KA06HT9326,Two-Wheeler,Bajaj,Pulsar 150,Blue,Offending Vehicle
+640,4473,KA10CF3934,Two-Wheeler,Bajaj,Avenger,White,Offending Vehicle
+641,4480,KA37C8043,Two-Wheeler,Honda,Dio,Maroon,Offending Vehicle
+642,4503,KA58LN6932,Two-Wheeler,Bajaj,Platina,Green,Stolen Vehicle
+643,4505,KA12M7595,Car,Hyundai,Creta,Maroon,Offending Vehicle
+644,4523,KA38LX7826,Two-Wheeler,Yamaha,R15,Black,Offending Vehicle
+645,4524,KA38N0739,SUV,Toyota,Fortuner,Maroon,Transport Vehicle
+646,4537,KA11C7584,SUV,Toyota,Fortuner,Red,Transport Vehicle
+647,4541,KA41UL4343,Two-Wheeler,Hero,Glamour,Red,Offending Vehicle
+648,4547,KA34K0294,SUV,Mahindra,Bolero,Black,Transport Vehicle
+649,4554,KA52GV5911,Two-Wheeler,Honda,Dio,Green,Stolen Vehicle
+650,4562,KA18E0261,Car,Tata,Tiago,Silver,Stolen Vehicle
+651,4567,KA69B7593,Car,Hyundai,i20,Maroon,Transport Vehicle
+652,4567,KA22T7296,Car,Honda,City,Black,Transport Vehicle
+653,4575,KA38BA7075,Two-Wheeler,Royal Enfield,Classic 350,Grey,Getaway Vehicle
+654,4590,KA52MT7994,Two-Wheeler,Bajaj,Pulsar 150,Green,Offending Vehicle
+655,4596,KA35XC5682,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Black,Transport Vehicle
+656,4596,KA37L7179,Bus,Tata,Starbus,Silver,Transport Vehicle
+657,4609,KA38ZW5903,Two-Wheeler,Bajaj,CT 100,Silver,Transport Vehicle
+658,4615,KA23D8064,Two-Wheeler,Yamaha,Fascino,Silver,Offending Vehicle
+659,4616,KA07J4274,Car,Tata,Tiago,Grey,Transport Vehicle
+660,4621,KA44CF9208,SUV,Tata,Safari,Black,Transport Vehicle
+661,4622,KA20T7174,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Red,Transport Vehicle
+662,4664,KA65D1935,Car,Maruti Suzuki,Dzire,White,Stolen Vehicle
+663,4669,KA65TC5960,Car,Tata,Altroz,Green,Offending Vehicle
+664,4675,KA32HM1397,Auto-Rickshaw,Piaggio,Ape Xtra,White,Offending Vehicle
+665,4677,KA20VD7026,Two-Wheeler,Yamaha,R15,Grey,Offending Vehicle
+666,4682,KA19T8477,Bus,Tata,Starbus,Green,Offending Vehicle
+667,4691,KA51S2474,Two-Wheeler,Honda,Dio,White,Transport Vehicle
+668,4703,KA52TH5639,Mini-Truck / Goods Carrier,Ashok Leyland,Dost,Maroon,Offending Vehicle
+669,4719,KA27TX6628,SUV,Mahindra,Thar,Green,Offending Vehicle
+670,4742,KA28M5116,Two-Wheeler,TVS,Jupiter,Red,Getaway Vehicle
+671,4745,KA70FU6927,Two-Wheeler,Honda,Activa,White,Getaway Vehicle
+672,4747,KA07L9379,Car,Toyota,Etios,Black,Offending Vehicle
+673,4747,KA69J4662,SUV,Toyota,Fortuner,Grey,Offending Vehicle
+674,4758,KA47CT6752,Two-Wheeler,Hero,Passion Pro,Grey,Transport Vehicle
+675,4759,KA10SK9159,Mini-Truck / Goods Carrier,Mahindra,Bolero Pickup,Green,Transport Vehicle
+676,4759,KA55SY6831,Car,Honda,Amaze,Green,Transport Vehicle
+677,4762,KA59AD9160,Car,Hyundai,i10,Grey,Transport Vehicle
+678,4765,KA48AD6087,Car,Honda,City,Black,Transport Vehicle
+679,4770,KA07XE8009,Mini-Truck / Goods Carrier,Tata,Ace,Maroon,Transport Vehicle
+680,4772,KA40XU7787,Mini-Truck / Goods Carrier,Tata,407,Green,Transport Vehicle
+681,4777,KA20CR6712,Car,Honda,Amaze,Green,Getaway Vehicle
+682,4780,KA12T9372,Car,Maruti Suzuki,Baleno,Red,Transport Vehicle
+683,4790,KA67U8236,SUV,Mahindra,Bolero,White,Transport Vehicle
+684,4794,KA27W9496,Two-Wheeler,Honda,Activa,Red,Getaway Vehicle
+685,4796,KA03LK8650,Bus,Tata,Starbus,Green,Transport Vehicle
+686,4798,KA37E1469,Car,Maruti Suzuki,Dzire,Silver,Offending Vehicle
+687,4807,KA04G1618,SUV,Mahindra,XUV500,Silver,Transport Vehicle
+688,4810,KA16E9782,Two-Wheeler,Bajaj,Avenger,Maroon,Stolen Vehicle
+689,4822,KA41NB0474,Mini-Truck / Goods Carrier,Tata,407,White,Transport Vehicle
+690,4833,KA17PL8200,Bus,Tata,Starbus,Grey,Offending Vehicle
+691,4835,KA58A7613,Mini-Truck / Goods Carrier,Tata,Ace,Maroon,Transport Vehicle
+692,4843,KA33ZW3486,Car,Maruti Suzuki,Baleno,Red,Transport Vehicle
+693,4864,KA12TW9118,Car,Toyota,Innova,Red,Stolen Vehicle
+694,4889,KA58FZ5598,Auto-Rickshaw,TVS,King Duramax,Red,Offending Vehicle
+695,4891,KA01S6770,Car,Hyundai,i10,Green,Offending Vehicle
+696,4900,KA69X7294,Two-Wheeler,TVS,Apache RTR,Black,Offending Vehicle
+697,4915,KA48L3630,SUV,Mahindra,Scorpio,Green,Offending Vehicle
+698,4929,KA64AM9930,SUV,Tata,Safari,Grey,Transport Vehicle
+699,4931,KA65DE9269,Two-Wheeler,TVS,Apache RTR,Red,Transport Vehicle
+700,4952,KA67ES8732,Two-Wheeler,Honda,Unicorn,Grey,Transport Vehicle
+701,4953,KA42WK1995,SUV,Mahindra,Thar,White,Transport Vehicle
+702,4960,KA36NH6421,Two-Wheeler,Yamaha,FZ,White,Getaway Vehicle
+703,4962,KA55Y3226,Car,Toyota,Innova,Grey,Getaway Vehicle
+704,4968,KA56P5478,SUV,Mahindra,Scorpio,Green,Offending Vehicle
+705,4971,KA10UR9486,Mini-Truck / Goods Carrier,Tata,407,Grey,Transport Vehicle
+706,4972,KA09B7241,Auto-Rickshaw,Bajaj,Maxima C,Blue,Getaway Vehicle
+707,4973,KA38KR6736,Mini-Truck / Goods Carrier,Tata,Ace,White,Transport Vehicle
+708,4980,KA60XR5565,Mini-Truck / Goods Carrier,Tata,407,Maroon,Offending Vehicle
+709,4983,KA14P1107,Car,Toyota,Innova,Black,Offending Vehicle
+710,4983,KA46MR3047,Car,Hyundai,i20,Red,Offending Vehicle
+711,4984,KA66HX2386,Car,Tata,Altroz,Maroon,Transport Vehicle
+712,4985,KA02B8309,Car,Tata,Nexon,Blue,Getaway Vehicle

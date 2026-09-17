@@ -1,0 +1,586 @@
+OfficerID,PoliceStationID,DistrictID,Name,Gender,Rank,BadgeNumber,YearsOfService,AssignedCaseCount
+1,1,1,Advik Maharaj,M,Sub-Inspector,KSP0001350,3,19
+2,1,1,Isaac Dewan,M,Sub-Inspector,KSP0001658,6,9
+3,1,1,Caleb Sami,M,Assistant Sub-Inspector,KSP0001195,7,18
+4,2,1,Alexander Chander,M,Sub-Inspector,KSP0002674,19,16
+5,2,1,Jackson Tiwari,M,Assistant Sub-Inspector,KSP0002529,11,14
+6,2,1,Hardik Saini,M,Sub-Inspector,KSP0002106,11,14
+7,3,1,Udarsh Mall,M,Inspector,KSP0003448,13,7
+8,3,1,Gauri Sami,F,Sub-Inspector,KSP0003444,9,4
+9,3,1,Liam Dugal,M,Assistant Sub-Inspector,KSP0003967,7,4
+10,4,1,Om Chaudry,M,Sub-Inspector,KSP0004847,11,6
+11,4,1,Sachi Chatterjee,F,Sub-Inspector,KSP0004487,6,4
+12,4,1,Orinder Lalla,M,Assistant Sub-Inspector,KSP0004733,5,6
+13,5,1,Victor Yadav,M,Inspector,KSP0005821,19,7
+14,5,1,Ranbir Brar,M,Assistant Sub-Inspector,KSP0005396,11,7
+15,5,1,Pratyush Handa,M,Deputy Superintendent of Police,KSP0005489,25,6
+16,6,1,Arin Kari,M,Sub-Inspector,KSP0006463,14,5
+17,6,1,Balveer Kaul,M,Sub-Inspector,KSP0006799,11,8
+18,6,1,Ranveer Mall,M,Sub-Inspector,KSP0006350,8,6
+19,7,1,Qabil Gaba,M,Assistant Sub-Inspector,KSP0007755,7,5
+20,7,1,Peter Kadakia,M,Inspector,KSP0007963,15,6
+21,7,1,Balendra Garg,M,Inspector,KSP0007132,9,2
+22,8,1,Finn Shere,M,Inspector,KSP0008316,20,8
+23,8,1,Krishna Kanda,M,Circle Inspector,KSP0008611,25,8
+24,8,1,Ayaan Karnik,M,Sub-Inspector,KSP0008242,17,9
+25,9,2,Nakul Rattan,M,Sub-Inspector,KSP0009864,20,8
+26,9,2,Bachittar Kakar,M,Sub-Inspector,KSP0009241,15,5
+27,9,2,Hitesh Tata,M,Sub-Inspector,KSP0009981,5,8
+28,10,2,Veer Dhar,M,Assistant Sub-Inspector,KSP0010796,11,8
+29,10,2,Ekaraj Koshy,M,Sub-Inspector,KSP0010710,5,5
+30,10,2,Tanish Rastogi,M,Deputy Superintendent of Police,KSP0010666,34,5
+31,11,2,Imaran Devi,M,Inspector,KSP0011217,8,12
+32,11,2,Chakradev Batta,M,Inspector,KSP0011887,25,21
+33,11,2,Faraj Dutta,M,Sub-Inspector,KSP0011261,6,10
+34,12,2,Bhavika Rajan,F,Sub-Inspector,KSP0012880,11,4
+35,12,2,Vivaan Wadhwa,M,Assistant Sub-Inspector,KSP0012405,2,7
+36,12,2,Abdul Contractor,M,Inspector,KSP0012256,24,8
+37,13,2,Onkar Choudhury,M,Sub-Inspector,KSP0013897,8,7
+38,13,2,Teerth Dugar,M,Circle Inspector,KSP0013600,15,7
+39,13,2,Aarav Lall,M,Assistant Sub-Inspector,KSP0013951,6,3
+40,14,2,Zehaan Cherian,M,Inspector,KSP0014999,15,17
+41,14,2,Zehaan Issac,M,Sub-Inspector,KSP0014597,5,20
+42,14,2,Rachit Edwin,M,Inspector,KSP0014231,25,16
+43,15,2,Neel Suresh,M,Inspector,KSP0015640,25,5
+44,15,2,Dayita Patil,F,Inspector,KSP0015652,21,6
+45,15,2,Jagdish Bhardwaj,M,Inspector,KSP0015508,14,5
+46,16,3,Balveer Chada,M,Deputy Superintendent of Police,KSP0016629,29,6
+47,16,3,Bakhshi Walia,M,Sub-Inspector,KSP0016446,10,6
+48,16,3,Devansh Soman,M,Assistant Sub-Inspector,KSP0016325,9,3
+49,17,3,Kevin Wable,M,Assistant Sub-Inspector,KSP0017334,12,5
+50,17,3,Hitesh Zacharia,M,Assistant Sub-Inspector,KSP0017172,1,2
+51,17,3,Nachiket Rastogi,M,Sub-Inspector,KSP0017319,11,5
+52,18,3,Theodore Varughese,M,Sub-Inspector,KSP0018584,18,10
+53,18,3,Darpan Kota,M,Inspector,KSP0018774,14,28
+54,18,3,Azad Nigam,M,Sub-Inspector,KSP0018984,16,12
+55,19,3,Jyoti Kannan,F,Inspector,KSP0019200,28,23
+56,19,3,Balendra Bhargava,M,Assistant Sub-Inspector,KSP0019982,12,14
+57,19,3,Bahadurjit Balay,M,Assistant Sub-Inspector,KSP0019559,4,14
+58,20,3,Balendra Varkey,M,Assistant Sub-Inspector,KSP0020355,3,4
+59,20,3,Liam Sunder,M,Inspector,KSP0020982,10,9
+60,20,3,Dominic Solanki,M,Inspector,KSP0020653,11,7
+61,21,3,Vritti Ray,F,Inspector,KSP0021969,10,7
+62,21,3,Champak Chatterjee,M,Sub-Inspector,KSP0021318,16,3
+63,21,3,Peter Sampath,M,Inspector,KSP0021102,9,10
+64,22,3,Vinaya Bhagat,F,Deputy Superintendent of Police,KSP0022903,26,7
+65,22,3,Azaan Rau,M,Sub-Inspector,KSP0022848,16,1
+66,22,3,Chatura Kothari,M,Deputy Superintendent of Police,KSP0022403,33,8
+67,23,3,Girish Yadav,M,Sub-Inspector,KSP0023655,4,7
+68,23,3,Ekaraj Sami,M,Assistant Sub-Inspector,KSP0023698,6,5
+69,23,3,Liam Shere,M,Sub-Inspector,KSP0023620,19,7
+70,24,3,Baljiwan Savant,M,Assistant Sub-Inspector,KSP0024169,3,9
+71,24,3,Aryan Zachariah,M,Inspector,KSP0024683,15,3
+72,24,3,Chakradhar Khalsa,M,Sub-Inspector,KSP0024529,4,6
+73,25,3,Samar Sunder,M,Inspector,KSP0025367,26,6
+74,25,3,Hredhaan Rattan,M,Sub-Inspector,KSP0025505,13,3
+75,25,3,Fitan Raghavan,M,Assistant Sub-Inspector,KSP0025423,11,3
+76,26,3,Robert Lanka,M,Circle Inspector,KSP0026736,17,23
+77,26,3,Luke Sampath,M,Deputy Superintendent of Police,KSP0026318,21,26
+78,26,3,Garima Gupta,F,Sub-Inspector,KSP0026170,7,14
+79,27,4,Ikbal Bhardwaj,M,Inspector,KSP0027548,19,12
+80,27,4,Naksh Bhandari,M,Inspector,KSP0027926,17,10
+81,27,4,William Thakkar,M,Inspector,KSP0027667,8,12
+82,28,4,Barkha Trivedi,F,Sub-Inspector,KSP0028237,6,1
+83,28,4,Girik Biswas,M,Sub-Inspector,KSP0028259,6,9
+84,28,4,Jacob Raval,M,Sub-Inspector,KSP0028308,9,4
+85,29,4,Jatin Baral,M,Inspector,KSP0029357,16,6
+86,29,4,Shaurya Virk,M,Circle Inspector,KSP0029533,16,4
+87,29,4,Kalpit Jayaraman,M,Inspector,KSP0029889,9,5
+88,30,4,Jagdish Lanka,M,Assistant Sub-Inspector,KSP0030552,5,8
+89,30,4,Dominic Mital,M,Sub-Inspector,KSP0030214,16,4
+90,30,4,Nisha Bora,F,Assistant Sub-Inspector,KSP0030658,12,6
+91,31,5,Veer Chaudhry,M,Assistant Sub-Inspector,KSP0031251,6,8
+92,31,5,Hredhaan Toor,M,Sub-Inspector,KSP0031915,4,2
+93,31,5,Ekaja Palla,F,Circle Inspector,KSP0031315,16,10
+94,32,5,Jason Pingle,M,Inspector,KSP0032673,11,13
+95,32,5,Gaurangi Sarma,F,Inspector,KSP0032867,21,16
+96,32,5,Aayush Mistry,M,Assistant Sub-Inspector,KSP0032919,4,6
+97,33,5,Ekalinga Lalla,M,Inspector,KSP0033854,21,6
+98,33,5,Chatresh Dugal,M,Circle Inspector,KSP0033984,28,7
+99,33,5,Lohit Kade,M,Inspector,KSP0033906,15,7
+100,34,5,Harsh Lalla,M,Inspector,KSP0034979,20,7
+101,34,5,Jeremiah Behl,M,Sub-Inspector,KSP0034571,9,5
+102,34,5,Siddharth Malhotra,M,Sub-Inspector,KSP0034775,10,3
+103,35,5,Aarav Nath,M,Assistant Sub-Inspector,KSP0035171,6,3
+104,35,5,Karan Edwin,M,Circle Inspector,KSP0035621,23,6
+105,35,5,Tanay Andra,M,Sub-Inspector,KSP0035128,20,5
+106,36,5,Baljiwan Dixit,M,Assistant Sub-Inspector,KSP0036371,5,2
+107,36,5,Qasim Divan,M,Assistant Sub-Inspector,KSP0036846,10,6
+108,36,5,Devansh Barman,M,Inspector,KSP0036623,21,3
+109,37,5,Qabil Baral,M,Assistant Sub-Inspector,KSP0037145,10,13
+110,37,5,Henry Krish,M,Inspector,KSP0037925,8,19
+111,37,5,Peter Ray,M,Sub-Inspector,KSP0037171,9,12
+112,38,5,Jagat Gaba,M,Circle Inspector,KSP0038779,25,10
+113,38,5,Samuel Bakshi,M,Inspector,KSP0038782,17,5
+114,38,5,Ojas Sabharwal,M,Sub-Inspector,KSP0038667,15,4
+115,39,5,Kiaan Dutta,M,Assistant Sub-Inspector,KSP0039488,7,16
+116,39,5,Rayaan Barad,M,Inspector,KSP0039408,13,27
+117,39,5,Indrajit Iyengar,M,Sub-Inspector,KSP0039315,3,19
+118,40,5,Parth Mody,M,Sub-Inspector,KSP0040552,13,5
+119,40,5,Isaac Bajwa,M,Inspector,KSP0040915,24,7
+120,40,5,Ryan Narasimhan,M,Inspector,KSP0040779,10,13
+121,41,6,Bakhshi Mallick,M,Sub-Inspector,KSP0041869,13,12
+122,41,6,Ryan Yadav,M,Sub-Inspector,KSP0041303,12,11
+123,41,6,Akshay D’Alia,M,Assistant Sub-Inspector,KSP0041586,1,18
+124,42,6,Gaurav Lanka,M,Sub-Inspector,KSP0042744,5,9
+125,42,6,Chatura Saraf,M,Sub-Inspector,KSP0042349,15,5
+126,42,6,Naksh Sarin,M,Assistant Sub-Inspector,KSP0042868,12,8
+127,43,6,Reyansh Gupta,M,Inspector,KSP0043324,11,9
+128,43,6,Anthony Sarin,M,Assistant Sub-Inspector,KSP0043151,12,3
+129,43,6,Guneet Patla,M,Sub-Inspector,KSP0043920,6,6
+130,44,6,Bhavya Narayanan,F,Sub-Inspector,KSP0044709,19,8
+131,44,6,David Mital,M,Sub-Inspector,KSP0044836,17,4
+132,44,6,Samarth Narain,M,Inspector,KSP0044661,21,4
+133,45,6,Manbir Datta,M,Sub-Inspector,KSP0045586,8,1
+134,45,6,Shivansh Raghavan,M,Sub-Inspector,KSP0045383,10,7
+135,45,6,Matthew Ravi,M,Inspector,KSP0045344,24,6
+136,46,6,Max Mangat,M,Sub-Inspector,KSP0046340,5,17
+137,46,6,Upasna Nagy,F,Sub-Inspector,KSP0046182,13,20
+138,46,6,Timothy Sathe,M,Assistant Sub-Inspector,KSP0046256,4,14
+139,47,7,Warjas Gara,M,Inspector,KSP0047438,10,14
+140,47,7,Lucky Varma,M,Sub-Inspector,KSP0047952,16,11
+141,47,7,Chakradhar Keer,M,Sub-Inspector,KSP0047883,3,12
+142,48,7,Isaiah Issac,M,Sub-Inspector,KSP0048460,18,14
+143,48,7,Advik Batra,M,Sub-Inspector,KSP0048955,15,13
+144,48,7,Wazir Bora,M,Sub-Inspector,KSP0048325,20,20
+145,49,7,Sarthak Hayer,M,Sub-Inspector,KSP0049129,11,9
+146,49,7,Yug Ratta,M,Sub-Inspector,KSP0049960,15,5
+147,49,7,Falak Ahluwalia,F,Sub-Inspector,KSP0049646,7,6
+148,50,7,Simon Kanda,M,Assistant Sub-Inspector,KSP0050778,7,4
+149,50,7,Vincent Bedi,M,Assistant Sub-Inspector,KSP0050987,11,4
+150,50,7,Darsh Shan,M,Sub-Inspector,KSP0050435,4,10
+151,51,7,Vincent Wali,M,Sub-Inspector,KSP0051488,13,5
+152,51,7,Timothy Thaman,M,Sub-Inspector,KSP0051183,16,2
+153,51,7,Udant Dutt,M,Sub-Inspector,KSP0051458,20,5
+154,52,8,Umang Lad,M,Sub-Inspector,KSP0052767,5,6
+155,52,8,Manya Verma,F,Assistant Sub-Inspector,KSP0052304,1,1
+156,52,8,Jagdish Maharaj,M,Inspector,KSP0052229,27,6
+157,53,8,Balvan Mangal,M,Sub-Inspector,KSP0053323,6,21
+158,53,8,Laban Nayak,M,Sub-Inspector,KSP0053271,11,14
+159,53,8,Banjeet Devi,M,Sub-Inspector,KSP0053267,6,11
+160,54,8,Jack Rajagopal,M,Circle Inspector,KSP0054419,18,3
+161,54,8,Hredhaan Bhatt,M,Sub-Inspector,KSP0054832,15,4
+162,54,8,Samar Narayanan,M,Assistant Sub-Inspector,KSP0054742,10,7
+163,55,8,Sarthak Bhatia,M,Sub-Inspector,KSP0055714,12,6
+164,55,8,Shivansh Ramachandran,M,Inspector,KSP0055455,26,7
+165,55,8,Ranveer Sood,M,Sub-Inspector,KSP0055763,14,6
+166,56,8,Patrick Misra,M,Sub-Inspector,KSP0056208,16,7
+167,56,8,Shaurya Yohannan,M,Sub-Inspector,KSP0056948,14,17
+168,56,8,Yagnesh Kanda,M,Sub-Inspector,KSP0056851,7,16
+169,57,8,Tejas Sunder,M,Sub-Inspector,KSP0057651,11,2
+170,57,8,Robert Nayar,M,Inspector,KSP0057848,22,8
+171,57,8,Fitan Sibal,M,Sub-Inspector,KSP0057950,13,4
+172,58,9,Amara Ramesh,F,Circle Inspector,KSP0058349,23,20
+173,58,9,Benjamin Sangha,M,Inspector,KSP0058488,26,16
+174,58,9,Vihaan Gopal,M,Sub-Inspector,KSP0058286,18,11
+175,59,9,Kalpit Raghavan,M,Sub-Inspector,KSP0059448,14,3
+176,59,9,Hitesh Sha,M,Sub-Inspector,KSP0059629,11,5
+177,59,9,Om Raghavan,M,Circle Inspector,KSP0059516,17,7
+178,60,9,Shivansh Krishnan,M,Sub-Inspector,KSP0060761,10,2
+179,60,9,Wahab Bahl,M,Inspector,KSP0060195,22,9
+180,60,9,Parth Kapur,M,Sub-Inspector,KSP0060413,15,6
+181,61,9,Anmol Balasubramanian,M,Inspector,KSP0061643,19,1
+182,61,9,Harish Bahri,M,Sub-Inspector,KSP0061819,20,4
+183,61,9,Jagdish Date,M,Sub-Inspector,KSP0061223,12,3
+184,62,9,Dakshesh Kamdar,M,Inspector,KSP0062648,18,21
+185,62,9,Kabir Pillay,M,Circle Inspector,KSP0062856,20,16
+186,62,9,Dakshesh Gade,M,Sub-Inspector,KSP0062202,19,16
+187,63,9,Chatura Bal,M,Inspector,KSP0063283,17,6
+188,63,9,Raghav Ranganathan,M,Sub-Inspector,KSP0063146,20,2
+189,63,9,Baljiwan Kibe,M,Circle Inspector,KSP0063229,32,5
+190,64,9,Matthew Dara,M,Sub-Inspector,KSP0064112,18,5
+191,64,9,Oscar Walia,M,Sub-Inspector,KSP0064448,18,5
+192,64,9,Qasim Biswas,M,Assistant Sub-Inspector,KSP0064982,1,6
+193,65,10,Abeer Salvi,M,Sub-Inspector,KSP0065175,5,6
+194,65,10,Chatresh Sant,M,Sub-Inspector,KSP0065930,4,1
+195,65,10,Victor Dua,M,Sub-Inspector,KSP0065354,12,6
+196,66,10,Gaurang Vig,M,Assistant Sub-Inspector,KSP0066909,7,15
+197,66,10,Wyatt Shroff,M,Sub-Inspector,KSP0066553,19,12
+198,66,10,Krish Naidu,M,Sub-Inspector,KSP0066735,16,15
+199,67,10,Caleb Mallick,M,Assistant Sub-Inspector,KSP0067881,12,5
+200,67,10,Jairaj Shetty,M,Sub-Inspector,KSP0067183,9,7
+201,67,10,Om Balakrishnan,M,Assistant Sub-Inspector,KSP0067260,3,1
+202,68,10,Nicholas Gopal,M,Assistant Sub-Inspector,KSP0068581,8,2
+203,68,10,Hitesh Pant,M,Sub-Inspector,KSP0068389,10,6
+204,68,10,Onkar Mammen,M,Inspector,KSP0068339,22,6
+205,69,10,Abdul Varughese,M,Circle Inspector,KSP0069657,21,19
+206,69,10,Chaman Khurana,F,Sub-Inspector,KSP0069946,7,14
+207,69,10,Yash Khosla,M,Assistant Sub-Inspector,KSP0069414,1,14
+208,70,10,Yatan Sem,M,Sub-Inspector,KSP0070579,12,1
+209,70,10,Charita Menon,F,Inspector,KSP0070612,20,4
+210,70,10,Samaksh Kohli,M,Sub-Inspector,KSP0070140,17,3
+211,71,11,Qarin Solanki,M,Inspector,KSP0071126,18,4
+212,71,11,Simon Narayanan,M,Assistant Sub-Inspector,KSP0071689,11,4
+213,71,11,Vasana Madan,F,Sub-Inspector,KSP0071788,3,5
+214,72,11,Jeremiah Kashyap,M,Inspector,KSP0072874,26,4
+215,72,11,Gopal Mutti,M,Assistant Sub-Inspector,KSP0072384,9,10
+216,72,11,George Handa,M,Assistant Sub-Inspector,KSP0072933,10,9
+217,73,11,Wyatt Malhotra,M,Sub-Inspector,KSP0073518,5,9
+218,73,11,Chandresh Hari,M,Sub-Inspector,KSP0073437,6,9
+219,73,11,Ishaan Patel,M,Sub-Inspector,KSP0073510,18,2
+220,74,11,Matthew Atwal,M,Inspector,KSP0074190,25,5
+221,74,11,Laksh Bath,M,Sub-Inspector,KSP0074891,13,4
+222,74,11,Madhav Date,M,Sub-Inspector,KSP0074101,19,6
+223,75,11,Charan Arora,M,Inspector,KSP0075155,25,5
+224,75,11,Wahab Srinivas,M,Assistant Sub-Inspector,KSP0075610,6,4
+225,75,11,Onkar Gour,M,Sub-Inspector,KSP0075662,4,3
+226,76,11,Jonathan Sridhar,M,Assistant Sub-Inspector,KSP0076815,5,10
+227,76,11,Bhavini Rattan,F,Sub-Inspector,KSP0076723,3,20
+228,76,11,Balhaar Bera,M,Inspector,KSP0076114,13,23
+229,77,11,Falan Modi,M,Sub-Inspector,KSP0077961,5,13
+230,77,11,Kritika Dani,F,Circle Inspector,KSP0077763,29,21
+231,77,11,Jeevika Virk,F,Inspector,KSP0077398,23,25
+232,78,12,Umang Savant,M,Sub-Inspector,KSP0078594,11,7
+233,78,12,Tanish Mody,M,Deputy Superintendent of Police,KSP0078248,25,2
+234,78,12,Chandran Johal,M,Sub-Inspector,KSP0078239,19,8
+235,79,12,Kevin Bumb,M,Inspector,KSP0079974,16,8
+236,79,12,Jagdish Ghose,M,Sub-Inspector,KSP0079102,19,6
+237,79,12,Farhan Agate,M,Sub-Inspector,KSP0079693,12,6
+238,80,12,Umang Singhal,M,Deputy Superintendent of Police,KSP0080557,33,8
+239,80,12,Amol Kata,M,Sub-Inspector,KSP0080881,14,5
+240,80,12,Megha Setty,F,Sub-Inspector,KSP0080990,17,6
+241,81,12,Jackson Lalla,M,Assistant Sub-Inspector,KSP0081492,12,7
+242,81,12,Simon Contractor,M,Sub-Inspector,KSP0081862,16,4
+243,81,12,Falan Lata,M,Sub-Inspector,KSP0081779,15,4
+244,82,12,Bimala Bhasin,F,Inspector,KSP0082607,28,28
+245,82,12,Mitesh Mani,M,Circle Inspector,KSP0082704,19,18
+246,82,12,David Sidhu,M,Sub-Inspector,KSP0082550,6,8
+247,83,12,Saksham Magar,M,Assistant Sub-Inspector,KSP0083247,8,15
+248,83,12,Theodore Buch,M,Sub-Inspector,KSP0083900,7,17
+249,83,12,Tarak Naidu,M,Circle Inspector,KSP0083507,25,16
+250,84,13,Agastya Chand,M,Sub-Inspector,KSP0084979,13,4
+251,84,13,Advaith Luthra,M,Sub-Inspector,KSP0084877,13,15
+252,84,13,Gagan Singhal,M,Sub-Inspector,KSP0084170,20,6
+253,85,13,Maya Golla,F,Sub-Inspector,KSP0085864,12,21
+254,85,13,Yatan Chand,M,Assistant Sub-Inspector,KSP0085820,2,28
+255,85,13,Owen Rege,M,Inspector,KSP0085406,22,24
+256,86,13,Naveen Cheema,M,Circle Inspector,KSP0086157,16,5
+257,86,13,Nitesh Sabharwal,M,Sub-Inspector,KSP0086350,14,5
+258,86,13,Maanas Rattan,M,Sub-Inspector,KSP0086180,8,4
+259,87,13,Utkarsh Chakrabarti,M,Sub-Inspector,KSP0087346,15,13
+260,87,13,Jonathan Naik,M,Sub-Inspector,KSP0087753,7,14
+261,87,13,Saksham Varkey,M,Sub-Inspector,KSP0087923,11,16
+262,88,13,Vihaan Sachdev,M,Sub-Inspector,KSP0088261,12,3
+263,88,13,Ijaya Vasa,F,Assistant Sub-Inspector,KSP0088406,6,4
+264,88,13,Zaid Sathe,M,Sub-Inspector,KSP0088567,16,2
+265,89,13,Ishani Loke,F,Inspector,KSP0089973,14,5
+266,89,13,Maanas Sarma,M,Sub-Inspector,KSP0089467,10,4
+267,89,13,Darsh Balakrishnan,M,Sub-Inspector,KSP0089949,12,3
+268,90,14,Fariq Mukhopadhyay,M,Inspector,KSP0090985,16,7
+269,90,14,Tanvi Chander,F,Inspector,KSP0090863,9,9
+270,90,14,Dakshesh Shenoy,M,Sub-Inspector,KSP0090335,12,1
+271,91,14,Faraj Tara,M,Sub-Inspector,KSP0091294,14,6
+272,91,14,Laban Sagar,M,Sub-Inspector,KSP0091742,7,5
+273,91,14,Warinder Kohli,M,Sub-Inspector,KSP0091134,12,4
+274,92,14,Elijah Rajagopal,M,Sub-Inspector,KSP0092402,7,17
+275,92,14,Ekansh Boase,M,Sub-Inspector,KSP0092235,16,15
+276,92,14,Sarthak Oak,M,Inspector,KSP0092379,19,19
+277,93,14,Aadhya Mandal,F,Inspector,KSP0093593,16,24
+278,93,14,Yash Dixit,M,Circle Inspector,KSP0093446,24,24
+279,93,14,Warhi Pai,F,Inspector,KSP0093244,22,18
+280,94,14,Ranbir Shah,M,Inspector,KSP0094841,15,6
+281,94,14,Ijaya Khare,F,Inspector,KSP0094923,20,4
+282,94,14,Jackson Roy,M,Sub-Inspector,KSP0094114,5,4
+283,95,15,Nathan Solanki,M,Sub-Inspector,KSP0095788,6,15
+284,95,15,Reyansh Doshi,M,Inspector,KSP0095942,16,20
+285,95,15,Andrew Date,M,Sub-Inspector,KSP0095339,14,16
+286,96,15,Chandresh Sarraf,M,Sub-Inspector,KSP0096724,20,9
+287,96,15,Vedant Aurora,M,Sub-Inspector,KSP0096575,5,4
+288,96,15,Samarth Dubey,M,Circle Inspector,KSP0096219,24,6
+289,97,15,Wahab Lanka,M,Assistant Sub-Inspector,KSP0097604,1,4
+290,97,15,Sneha Buch,F,Assistant Sub-Inspector,KSP0097238,4,5
+291,97,15,Ranveer Nadig,M,Sub-Inspector,KSP0097860,14,4
+292,98,15,Andrew Biswas,M,Inspector,KSP0098860,25,5
+293,98,15,Maanas Karan,M,Inspector,KSP0098953,21,3
+294,98,15,Urishilla Chaudhari,F,Sub-Inspector,KSP0098386,16,4
+295,99,15,Tristan Ganesan,M,Assistant Sub-Inspector,KSP0099555,6,9
+296,99,15,Akshay Batra,M,Circle Inspector,KSP0099802,26,3
+297,99,15,Ayaan Memon,M,Sub-Inspector,KSP0099382,14,2
+298,100,15,Ridhi Sankar,F,Assistant Sub-Inspector,KSP0100943,2,4
+299,100,15,Jason Wali,M,Sub-Inspector,KSP0100711,9,7
+300,100,15,Gautam Garde,M,Circle Inspector,KSP0100349,16,3
+301,101,15,Balveer Raja,M,Deputy Superintendent of Police,KSP0101883,24,21
+302,101,15,Yuvraj Dhar,M,Sub-Inspector,KSP0101338,9,11
+303,101,15,Vihaan Kumar,M,Sub-Inspector,KSP0101710,7,13
+304,102,16,Lakshmi Andra,F,Assistant Sub-Inspector,KSP0102653,3,1
+305,102,16,Maanas Dugar,M,Sub-Inspector,KSP0102987,8,4
+306,102,16,Timothy Pai,M,Assistant Sub-Inspector,KSP0102907,1,3
+307,103,16,Simon Krishna,M,Sub-Inspector,KSP0103371,13,12
+308,103,16,Matthew Issac,M,Assistant Sub-Inspector,KSP0103216,12,17
+309,103,16,Wyatt Chhabra,M,Inspector,KSP0103470,23,23
+310,104,16,Rayaan Parmer,M,Sub-Inspector,KSP0104326,6,5
+311,104,16,Manbir Bains,M,Circle Inspector,KSP0104987,16,3
+312,104,16,Laksh Anand,M,Inspector,KSP0104131,17,5
+313,105,16,Yuvraj Mangat,M,Assistant Sub-Inspector,KSP0105536,8,4
+314,105,16,Patrick Kanda,M,Inspector,KSP0105554,23,5
+315,105,16,Jeremiah Devan,M,Assistant Sub-Inspector,KSP0105251,2,6
+316,106,16,Anmol More,M,Assistant Sub-Inspector,KSP0106699,5,10
+317,106,16,Anay Patla,M,Sub-Inspector,KSP0106711,13,3
+318,106,16,Chakradev Merchant,M,Sub-Inspector,KSP0106540,17,4
+319,107,16,Sarthak Gill,M,Assistant Sub-Inspector,KSP0107770,12,2
+320,107,16,Dominic Zacharia,M,Inspector,KSP0107320,25,5
+321,107,16,Zashil Mahajan,M,Sub-Inspector,KSP0107947,10,6
+322,108,16,Kabir Subramaniam,M,Sub-Inspector,KSP0108420,16,9
+323,108,16,Omkaar Contractor,M,Sub-Inspector,KSP0108256,11,14
+324,108,16,Baljiwan Dhaliwal,M,Inspector,KSP0108951,23,19
+325,109,17,Rushil Pau,M,Assistant Sub-Inspector,KSP0109856,7,11
+326,109,17,Rudra Atwal,M,Sub-Inspector,KSP0109700,7,4
+327,109,17,David Sha,M,Circle Inspector,KSP0109225,32,7
+328,110,17,Karan Raj,M,Sub-Inspector,KSP0110838,16,2
+329,110,17,Chatura Kaur,M,Assistant Sub-Inspector,KSP0110460,5,2
+330,110,17,Advik Narang,M,Assistant Sub-Inspector,KSP0110772,9,7
+331,111,17,Azad Shetty,M,Sub-Inspector,KSP0111669,6,14
+332,111,17,Samarth Dada,M,Sub-Inspector,KSP0111926,11,14
+333,111,17,Aradhana Barad,F,Sub-Inspector,KSP0111938,20,18
+334,112,17,Yatin D’Alia,M,Sub-Inspector,KSP0112773,20,4
+335,112,17,Jacob Yogi,M,Inspector,KSP0112379,16,2
+336,112,17,Sara Setty,F,Inspector,KSP0112459,17,9
+337,113,17,Shaurya Dubey,M,Assistant Sub-Inspector,KSP0113510,3,7
+338,113,17,Chandran Suri,M,Assistant Sub-Inspector,KSP0113131,12,5
+339,113,17,Logan Bali,M,Assistant Sub-Inspector,KSP0113529,9,5
+340,114,17,Ikbal Sawhney,M,Sub-Inspector,KSP0114838,8,5
+341,114,17,Kamya Patil,F,Sub-Inspector,KSP0114259,5,5
+342,114,17,Qarin Parmer,M,Assistant Sub-Inspector,KSP0114183,10,10
+343,115,17,Rushil Majumdar,M,Sub-Inspector,KSP0115552,16,10
+344,115,17,Darsh Sha,M,Sub-Inspector,KSP0115216,9,23
+345,115,17,Hitesh Bail,M,Sub-Inspector,KSP0115794,6,19
+346,116,17,Ojas Kohli,M,Sub-Inspector,KSP0116146,19,4
+347,116,17,Harshil Biswas,M,Sub-Inspector,KSP0116408,4,2
+348,116,17,Hritik Kaul,M,Circle Inspector,KSP0116396,19,5
+349,117,18,Ethan Agate,M,Sub-Inspector,KSP0117540,3,7
+350,117,18,Elijah De,M,Assistant Sub-Inspector,KSP0117335,7,2
+351,117,18,Gagan Choudhary,M,Sub-Inspector,KSP0117982,14,6
+352,118,18,Dominic Aurora,M,Inspector,KSP0118179,21,9
+353,118,18,Jagat Naik,M,Inspector,KSP0118514,26,11
+354,118,18,Gagan Lanka,M,Inspector,KSP0118514,21,15
+355,119,18,Dev Sama,M,Assistant Sub-Inspector,KSP0119732,6,8
+356,119,18,Azad Soni,M,Sub-Inspector,KSP0119964,14,8
+357,119,18,Pratyush Varghese,M,Assistant Sub-Inspector,KSP0119636,7,5
+358,120,19,Upkaar Thakur,M,Assistant Sub-Inspector,KSP0120326,5,5
+359,120,19,Anthony Verma,M,Sub-Inspector,KSP0120748,8,4
+360,120,19,Veer Balasubramanian,M,Assistant Sub-Inspector,KSP0120894,9,5
+361,121,19,Wriddhish Ratti,M,Sub-Inspector,KSP0121249,7,10
+362,121,19,Chatura Swaminathan,M,Sub-Inspector,KSP0121878,8,11
+363,121,19,Balhaar Buch,M,Inspector,KSP0121891,10,26
+364,122,19,Ethan Bhatti,M,Sub-Inspector,KSP0122878,17,4
+365,122,19,Laksh Nair,M,Sub-Inspector,KSP0122742,13,4
+366,122,19,Manan Setty,M,Sub-Inspector,KSP0122552,17,4
+367,123,19,Chandran Contractor,M,Sub-Inspector,KSP0123460,11,4
+368,123,19,Tanveer Seth,M,Sub-Inspector,KSP0123138,12,9
+369,123,19,Samuel Nori,M,Assistant Sub-Inspector,KSP0123984,5,4
+370,124,19,Ryan Sagar,M,Circle Inspector,KSP0124619,17,17
+371,124,19,Nirja Sane,F,Sub-Inspector,KSP0124856,20,11
+372,124,19,Lakshmi Prasad,F,Inspector,KSP0124685,22,20
+373,125,20,Warjas Bhavsar,M,Inspector,KSP0125613,18,4
+374,125,20,Brijesh Chander,M,Assistant Sub-Inspector,KSP0125930,1,5
+375,125,20,Chasmum Pradhan,F,Inspector,KSP0125186,18,4
+376,126,20,Ayushman Narayan,M,Sub-Inspector,KSP0126824,8,5
+377,126,20,Samesh Pandya,M,Sub-Inspector,KSP0126724,17,10
+378,126,20,Ati Mani,F,Assistant Sub-Inspector,KSP0126496,6,6
+379,127,20,Patrick Chawla,M,Sub-Inspector,KSP0127153,13,14
+380,127,20,Faras Subramaniam,M,Inspector,KSP0127437,28,15
+381,127,20,Chatura Palla,M,Assistant Sub-Inspector,KSP0127358,11,8
+382,128,20,Dakshesh Mallick,M,Inspector,KSP0128441,27,6
+383,128,20,Tanish Bal,M,Assistant Sub-Inspector,KSP0128458,11,3
+384,128,20,Akshay Gole,M,Sub-Inspector,KSP0128825,15,1
+385,129,21,Mohammed Nori,M,Circle Inspector,KSP0129758,24,18
+386,129,21,Aarush Golla,M,Inspector,KSP0129948,12,14
+387,129,21,Sai Boase,M,Circle Inspector,KSP0129786,31,12
+388,130,21,Alexander Chand,M,Sub-Inspector,KSP0130416,14,4
+389,130,21,Raghav Saini,M,Assistant Sub-Inspector,KSP0130884,4,4
+390,130,21,Panini Dugar,F,Sub-Inspector,KSP0130258,10,5
+391,131,21,Nachiket Nair,M,Assistant Sub-Inspector,KSP0131652,2,6
+392,131,21,Atharv Dugal,M,Inspector,KSP0131444,24,2
+393,131,21,Aryan Bumb,M,Inspector,KSP0131485,27,7
+394,132,21,Timothy Samra,M,Assistant Sub-Inspector,KSP0132889,3,4
+395,132,21,Timothy Sachdeva,M,Sub-Inspector,KSP0132144,8,6
+396,132,21,Janaki Vala,F,Sub-Inspector,KSP0132725,10,3
+397,133,21,Orinder Sani,M,Sub-Inspector,KSP0133344,17,10
+398,133,21,Meghana Sur,F,Sub-Inspector,KSP0133298,18,6
+399,133,21,Arin Kannan,M,Sub-Inspector,KSP0133388,17,8
+400,134,21,Ayaan Amble,M,Inspector,KSP0134265,24,5
+401,134,21,Matthew Kakar,M,Inspector,KSP0134356,27,4
+402,134,21,Joshua Mann,M,Assistant Sub-Inspector,KSP0134667,8,4
+403,135,21,Darpan Amble,M,Circle Inspector,KSP0135391,31,27
+404,135,21,Tanveer Gill,M,Assistant Sub-Inspector,KSP0135625,3,15
+405,135,21,Ranveer Walia,M,Assistant Sub-Inspector,KSP0135327,7,11
+406,136,22,Yamini Pandya,F,Inspector,KSP0136524,19,17
+407,136,22,Rushil Basak,M,Assistant Sub-Inspector,KSP0136495,9,21
+408,136,22,Aditya Sharaf,M,Deputy Superintendent of Police,KSP0136426,29,20
+409,137,22,Naksh Sanghvi,M,Circle Inspector,KSP0137240,25,7
+410,137,22,Sathvik Mann,M,Assistant Sub-Inspector,KSP0137242,8,3
+411,137,22,Samaksh Bail,M,Inspector,KSP0137105,23,3
+412,138,22,Frederick Sharma,M,Circle Inspector,KSP0138955,15,5
+413,138,22,Chaitanya Sarkar,M,Assistant Sub-Inspector,KSP0138533,12,4
+414,138,22,Jairaj Sarin,M,Assistant Sub-Inspector,KSP0138224,5,3
+415,139,22,Balveer Randhawa,M,Assistant Sub-Inspector,KSP0139737,7,3
+416,139,22,Omkaar Kant,M,Sub-Inspector,KSP0139611,6,5
+417,139,22,Frado Bose,M,Sub-Inspector,KSP0139688,3,11
+418,140,22,Gunbir Palla,M,Sub-Inspector,KSP0140101,7,9
+419,140,22,Ethan Keer,M,Sub-Inspector,KSP0140291,10,10
+420,140,22,Elijah Kunda,M,Inspector,KSP0140469,10,8
+421,141,22,Gabriel Dua,M,Assistant Sub-Inspector,KSP0141905,9,5
+422,141,22,Gaurang Tak,M,Deputy Superintendent of Police,KSP0141581,18,7
+423,141,22,Vanya Naidu,F,Assistant Sub-Inspector,KSP0141359,7,3
+424,142,22,Faqid Sarraf,M,Inspector,KSP0142453,19,17
+425,142,22,Wahab Sathe,M,Sub-Inspector,KSP0142852,6,11
+426,142,22,Laksh Bhalla,M,Inspector,KSP0142659,12,17
+427,143,22,Zehaan Borah,M,Sub-Inspector,KSP0143801,8,7
+428,143,22,Vihaan Seth,M,Sub-Inspector,KSP0143930,18,6
+429,143,22,Ayush Pillay,M,Assistant Sub-Inspector,KSP0143568,12,5
+430,144,23,Balvan Chana,M,Assistant Sub-Inspector,KSP0144304,4,11
+431,144,23,Vedhika Barman,F,Inspector,KSP0144627,18,5
+432,144,23,Girindra Nagy,M,Sub-Inspector,KSP0144137,20,5
+433,145,23,Zashil Dora,M,Inspector,KSP0145982,14,2
+434,145,23,Umang Chauhan,M,Inspector,KSP0145227,28,2
+435,145,23,Chaman Thaman,F,Inspector,KSP0145861,21,4
+436,146,23,Anmol Kota,M,Sub-Inspector,KSP0146291,15,17
+437,146,23,Theodore Viswanathan,M,Sub-Inspector,KSP0146916,18,15
+438,146,23,Qabil Pradhan,M,Sub-Inspector,KSP0146180,5,11
+439,147,23,Rishi Rege,M,Sub-Inspector,KSP0147428,8,3
+440,147,23,Atharv Natt,M,Assistant Sub-Inspector,KSP0147413,6,3
+441,147,23,Nitesh Chandra,M,Sub-Inspector,KSP0147554,16,4
+442,148,23,Lucky Krishnan,M,Sub-Inspector,KSP0148461,4,9
+443,148,23,Ojas Bumb,M,Sub-Inspector,KSP0148910,16,18
+444,148,23,Parth Mukherjee,M,Circle Inspector,KSP0148515,17,21
+445,149,24,Eiravati Chad,F,Sub-Inspector,KSP0149246,8,6
+446,149,24,Raghav Narasimhan,M,Inspector,KSP0149168,22,10
+447,149,24,Chakradhar Sampath,M,Sub-Inspector,KSP0149680,14,1
+448,150,24,Aditya Patil,M,Assistant Sub-Inspector,KSP0150479,3,3
+449,150,24,Gautam Kala,M,Sub-Inspector,KSP0150642,5,7
+450,150,24,Xavier Handa,M,Sub-Inspector,KSP0150355,13,7
+451,151,24,Ekapad Dubey,M,Circle Inspector,KSP0151611,15,15
+452,151,24,Manbir Chaudhuri,M,Sub-Inspector,KSP0151893,20,18
+453,151,24,Om Deep,M,Sub-Inspector,KSP0151726,17,16
+454,152,24,Faraj Gaba,M,Sub-Inspector,KSP0152238,18,8
+455,152,24,Fitan Sarma,M,Inspector,KSP0152830,22,6
+456,152,24,Samesh Patla,M,Sub-Inspector,KSP0152965,5,5
+457,153,25,Tristan Mane,M,Deputy Superintendent of Police,KSP0153663,29,15
+458,153,25,Jackson Walla,M,Sub-Inspector,KSP0153828,12,15
+459,153,25,Mohammed Singh,M,Inspector,KSP0153470,28,15
+460,154,25,Raksha Sastry,F,Sub-Inspector,KSP0154911,6,5
+461,154,25,Lohit Raja,M,Assistant Sub-Inspector,KSP0154667,8,5
+462,154,25,Faris Iyengar,M,Sub-Inspector,KSP0154664,17,6
+463,155,25,Jeremiah Ben,M,Assistant Sub-Inspector,KSP0155507,2,5
+464,155,25,Quincy Chauhan,M,Deputy Superintendent of Police,KSP0155887,33,7
+465,155,25,Lucky Chacko,M,Sub-Inspector,KSP0155424,5,3
+466,156,25,Laban Sengupta,M,Sub-Inspector,KSP0156629,17,5
+467,156,25,Tejas Chand,M,Sub-Inspector,KSP0156286,20,7
+468,156,25,Umang Palla,M,Inspector,KSP0156989,12,3
+469,157,25,Sarthak Bera,M,Assistant Sub-Inspector,KSP0157411,2,3
+470,157,25,Yashasvi Prakash,F,Assistant Sub-Inspector,KSP0157330,6,6
+471,157,25,Sanya Bumb,F,Sub-Inspector,KSP0157966,19,9
+472,158,25,Isaac Bala,M,Assistant Sub-Inspector,KSP0158664,4,9
+473,158,25,Chandran Nayak,M,Sub-Inspector,KSP0158195,12,7
+474,158,25,Ekapad Barad,M,Sub-Inspector,KSP0158694,8,5
+475,159,25,Warinder Dewan,M,Assistant Sub-Inspector,KSP0159719,11,16
+476,159,25,Udarsh Ahluwalia,M,Sub-Inspector,KSP0159129,4,13
+477,159,25,Aditya Kunda,M,Assistant Sub-Inspector,KSP0159371,11,10
+478,160,26,Falan Wable,M,Inspector,KSP0160754,26,6
+479,160,26,Christopher Mani,M,Assistant Sub-Inspector,KSP0160757,11,1
+480,160,26,Matthew Dara,M,Circle Inspector,KSP0160926,30,6
+481,161,26,Jagdish Saini,M,Inspector,KSP0161805,17,13
+482,161,26,Azad Choudhry,M,Assistant Sub-Inspector,KSP0161575,8,14
+483,161,26,Abhiram Varma,M,Sub-Inspector,KSP0161835,7,12
+484,162,26,Eshana Manne,F,Sub-Inspector,KSP0162233,14,3
+485,162,26,Aadi Pandit,M,Inspector,KSP0162426,24,7
+486,162,26,Sathvik Grover,M,Sub-Inspector,KSP0162353,6,10
+487,163,26,Pranit Bir,M,Assistant Sub-Inspector,KSP0163493,1,11
+488,163,26,Robert Singhal,M,Inspector,KSP0163986,21,16
+489,163,26,Sara Prakash,F,Circle Inspector,KSP0163838,25,26
+490,164,26,Abhiram Parikh,M,Sub-Inspector,KSP0164627,8,5
+491,164,26,Orinder Khosla,M,Sub-Inspector,KSP0164192,12,3
+492,164,26,Ojas Deol,M,Circle Inspector,KSP0164346,31,6
+493,165,26,Patrick Nigam,M,Sub-Inspector,KSP0165388,14,3
+494,165,26,Vincent Srinivas,M,Sub-Inspector,KSP0165108,18,4
+495,165,26,Ekansh Bhatnagar,M,Inspector,KSP0165370,21,2
+496,166,26,Andrew Memon,M,Inspector,KSP0166510,20,4
+497,166,26,Anthony Iyengar,M,Assistant Sub-Inspector,KSP0166666,9,5
+498,166,26,Nakul Mukherjee,M,Sub-Inspector,KSP0166882,15,4
+499,167,26,Warjas Kulkarni,M,Sub-Inspector,KSP0167199,6,11
+500,167,26,Girish Mangal,M,Sub-Inspector,KSP0167474,13,15
+501,167,26,Arjun Narula,M,Inspector,KSP0167511,14,29
+502,168,26,David Pillai,M,Sub-Inspector,KSP0168830,4,3
+503,168,26,Ryan Sarraf,M,Sub-Inspector,KSP0168252,18,7
+504,168,26,Omkaar Grover,M,Sub-Inspector,KSP0168727,19,2
+505,169,27,Yadavi Pillai,F,Sub-Inspector,KSP0169857,15,13
+506,169,27,Benjamin Samra,M,Inspector,KSP0169948,26,20
+507,169,27,Tanveer Gole,M,Sub-Inspector,KSP0169406,18,20
+508,170,27,Naveen Chauhan,M,Sub-Inspector,KSP0170789,3,6
+509,170,27,Nihal Merchant,M,Assistant Sub-Inspector,KSP0170915,7,3
+510,170,27,Udant Sandhu,M,Inspector,KSP0170585,28,10
+511,171,27,Tristan Panchal,M,Sub-Inspector,KSP0171697,10,3
+512,171,27,Ansh Pandit,M,Sub-Inspector,KSP0171734,19,3
+513,171,27,Laksh Bhandari,M,Inspector,KSP0171797,20,8
+514,172,28,Samaksh Patla,M,Sub-Inspector,KSP0172551,6,3
+515,172,28,Alexander Dhar,M,Sub-Inspector,KSP0172308,7,4
+516,172,28,Anay Date,M,Sub-Inspector,KSP0172853,18,4
+517,173,28,Jacob Peri,M,Inspector,KSP0173674,12,7
+518,173,28,Rehaan Bali,M,Sub-Inspector,KSP0173421,18,2
+519,173,28,Varenya Prabhakar,F,Circle Inspector,KSP0173450,29,7
+520,174,28,Tristan Bose,M,Sub-Inspector,KSP0174296,11,4
+521,174,28,Qadim Rao,M,Circle Inspector,KSP0174330,23,2
+522,174,28,Liam Krish,M,Circle Inspector,KSP0174821,24,8
+523,175,28,Agastya Grewal,M,Sub-Inspector,KSP0175457,18,6
+524,175,28,Rishi Dalal,M,Sub-Inspector,KSP0175687,11,3
+525,175,28,Leena Sehgal,F,Inspector,KSP0175504,20,7
+526,176,28,Luke Swaminathan,M,Inspector,KSP0176394,12,13
+527,176,28,Darsh Deshmukh,M,Circle Inspector,KSP0176552,17,11
+528,176,28,Upkaar Gera,M,Inspector,KSP0176947,23,16
+529,177,28,Caleb Nagarajan,M,Sub-Inspector,KSP0177240,20,16
+530,177,28,Bachittar Mannan,M,Assistant Sub-Inspector,KSP0177348,12,13
+531,177,28,Farhan Ghosh,M,Assistant Sub-Inspector,KSP0177338,9,12
+532,178,28,Isaac Dara,M,Assistant Sub-Inspector,KSP0178583,7,6
+533,178,28,Ekaraj Khalsa,M,Assistant Sub-Inspector,KSP0178663,3,5
+534,178,28,Agastya Patel,M,Circle Inspector,KSP0178999,20,3
+535,179,28,Vivaan Dayal,M,Sub-Inspector,KSP0179394,9,4
+536,179,28,Bhavini More,F,Sub-Inspector,KSP0179191,4,3
+537,179,28,Wriddhish Vora,M,Inspector,KSP0179840,15,5
+538,180,28,Tara Borah,F,Inspector,KSP0180279,9,12
+539,180,28,Nitara Borah,F,Sub-Inspector,KSP0180137,8,17
+540,180,28,Viraj Varughese,M,Deputy Superintendent of Police,KSP0180290,30,19
+541,181,28,Devansh Gopal,M,Circle Inspector,KSP0181109,24,8
+542,181,28,Upma Thakkar,F,Sub-Inspector,KSP0181443,6,3
+543,181,28,David Vasa,M,Sub-Inspector,KSP0181237,20,6
+544,182,29,Max Gala,M,Inspector,KSP0182928,22,11
+545,182,29,Neel Kar,M,Assistant Sub-Inspector,KSP0182763,3,3
+546,182,29,Lucky Brar,M,Sub-Inspector,KSP0182445,8,3
+547,183,29,Guneet Maharaj,M,Inspector,KSP0183297,26,17
+548,183,29,Nidra Walla,F,Assistant Sub-Inspector,KSP0183946,11,18
+549,183,29,Zayan Ganguly,M,Sub-Inspector,KSP0183785,13,16
+550,184,29,Frederick Nazareth,M,Assistant Sub-Inspector,KSP0184354,3,6
+551,184,29,Akshay Bumb,M,Assistant Sub-Inspector,KSP0184871,7,5
+552,184,29,Kevin Kade,M,Sub-Inspector,KSP0184840,13,3
+553,185,29,Alexander Tank,M,Sub-Inspector,KSP0185809,11,7
+554,185,29,Matthew Subramanian,M,Sub-Inspector,KSP0185263,6,9
+555,185,29,Tanmayi Mishra,F,Sub-Inspector,KSP0185820,19,4
+556,186,29,Balhaar Bhasin,M,Inspector,KSP0186402,11,21
+557,186,29,Thomas Sagar,M,Sub-Inspector,KSP0186236,10,17
+558,186,29,Vincent Jani,M,Sub-Inspector,KSP0186720,17,14
+559,187,30,Eshana Munshi,F,Sub-Inspector,KSP0187875,20,12
+560,187,30,Orinder Rastogi,M,Sub-Inspector,KSP0187796,9,14
+561,187,30,Qasim Varma,M,Inspector,KSP0187640,10,16
+562,188,30,Odika Khurana,F,Inspector,KSP0188214,10,5
+563,188,30,Divya Loke,F,Assistant Sub-Inspector,KSP0188307,9,4
+564,188,30,Jatin Dhaliwal,M,Sub-Inspector,KSP0188974,7,7
+565,189,30,Aryan Mannan,M,Sub-Inspector,KSP0189834,6,4
+566,189,30,Ubika Kothari,F,Sub-Inspector,KSP0189556,5,2
+567,189,30,Nihal Munshi,M,Inspector,KSP0189525,22,14
+568,190,30,Fariq Tara,M,Sub-Inspector,KSP0190788,4,7
+569,190,30,Zaid Morar,M,Inspector,KSP0190936,8,8
+570,190,30,Advay Chana,M,Assistant Sub-Inspector,KSP0190146,4,4
+571,191,31,Zayyan Shankar,M,Sub-Inspector,KSP0191161,5,17
+572,191,31,Janaki Pandit,F,Circle Inspector,KSP0191583,17,21
+573,191,31,Aryan Manda,M,Assistant Sub-Inspector,KSP0191238,7,9
+574,192,31,Vrinda Mangal,F,Inspector,KSP0192483,28,15
+575,192,31,Chatura Sankar,M,Deputy Superintendent of Police,KSP0192486,30,8
+576,192,31,Kevin Pau,M,Sub-Inspector,KSP0192980,20,13
+577,193,31,Rajeshri Bath,F,Sub-Inspector,KSP0193502,8,4
+578,193,31,Atharv Hayer,M,Sub-Inspector,KSP0193874,10,4
+579,193,31,Maanas Borah,M,Assistant Sub-Inspector,KSP0193836,5,4
+580,194,31,Zayyan Seshadri,M,Sub-Inspector,KSP0194335,20,7
+581,194,31,Daniel Dave,M,Sub-Inspector,KSP0194293,14,4
+582,194,31,Ronith Prakash,M,Circle Inspector,KSP0194776,18,4
+583,195,31,Qadim Dhawan,M,Sub-Inspector,KSP0195168,3,5
+584,195,31,Sai Tella,M,Assistant Sub-Inspector,KSP0195788,1,6
+585,195,31,Arin Barad,M,Inspector,KSP0195145,9,8

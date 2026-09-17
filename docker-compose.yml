@@ -1,0 +1,97 @@
+# =============================================================================
+# docker-compose.yml
+#
+# Purpose: local/dev orchestration of every service described in the SAD's
+# high-level architecture diagram (Section 2.2), at hackathon scale
+# (Roadmap Section 0 - no Kubernetes/Terraform needed for this stage).
+#
+# Services: postgres (+ PostGIS/pgvector), redis, backend (Core API),
+# ai-engine (inference microservice), frontend (web client).
+#
+# Usage: `docker-compose up --build`
+# =============================================================================
+
+version: "3.9"
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    container_name: ksp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ksp_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ksp_backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./database:/database:ro
+
+  ai-engine:
+    build:
+      context: ./ai-engine
+    container_name: ksp_ai_engine
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8100:8100"
+    volumes:
+      - ./ai-engine:/app
+      - ./database:/database:ro
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: ksp_frontend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  celery-worker:
+    build:
+      context: ./backend
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+    env_file: .env
+    depends_on:
+      - redis
+      - postgres
+
+volumes:
+  postgres_data:

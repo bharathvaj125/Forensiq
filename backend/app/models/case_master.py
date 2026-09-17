@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 class CaseMaster(Base):
     __tablename__ = "case_master"
 
-    CaseMasterID = Column(BigInteger, primary_key=True, index=True)
+    CaseMasterID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     CrimeNo = Column(BigInteger, unique=True, index=True)
     CaseNo = Column(String, index=True)
     CrimeRegisteredDate = Column(Date)

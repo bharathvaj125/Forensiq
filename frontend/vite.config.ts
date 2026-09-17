@@ -4,11 +4,6 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
-  define: {
-    "import.meta.env.VITE_API_BASE_URL": JSON.stringify(
-      process.env.VITE_API_BASE_URL || "https://ksp-docker-backend-50044331349.development.catalystappsail.in/api/v1"
-    ),
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

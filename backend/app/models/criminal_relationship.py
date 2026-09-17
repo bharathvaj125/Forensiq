@@ -4,7 +4,7 @@ from app.db.base_class import Base
 class CriminalRelationship(Base):
     __tablename__ = "criminal_relationships"
 
-    RelationshipID = Column(BigInteger, primary_key=True, index=True)
+    RelationshipID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     SourcePersonID = Column(Integer, nullable=False, index=True)
     TargetPersonID = Column(Integer, nullable=False, index=True)
     RelationshipType = Column(String, nullable=False)

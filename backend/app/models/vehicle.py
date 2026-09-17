@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 class Vehicle(Base):
     __tablename__ = "vehicle"
 
-    VehicleID = Column(BigInteger, primary_key=True, index=True)
+    VehicleID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     CaseMasterID = Column(BigInteger, ForeignKey("case_master.CaseMasterID"), nullable=False, index=True)
     RegistrationNumber = Column(String, index=True)
     VehicleType = Column(String)

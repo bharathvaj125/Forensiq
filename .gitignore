@@ -9,6 +9,9 @@ env/
 # Environment variables
 .env
 
+# Local dev SQLite database (runtime-generated, don't commit seeded data)
+backend/ksp_crime_intel.db
+
 # IDE
 .vscode/
 .idea/

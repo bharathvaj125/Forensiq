@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 class CaseAnnotation(Base):
     __tablename__ = "case_annotations"
 
-    AnnotationID = Column(BigInteger, primary_key=True, index=True)
+    AnnotationID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     CaseMasterID = Column(BigInteger, ForeignKey("case_master.CaseMasterID"), nullable=False, index=True)
     UserID = Column(Integer, ForeignKey("users.UserID"), nullable=False)
     NotesText = Column(Text, nullable=False)

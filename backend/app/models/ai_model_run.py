@@ -1,6 +1,6 @@
 """Append-only audit record for every AI inference issued by the Core Backend."""
 
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 
 from app.db.base_class import Base
@@ -9,7 +9,7 @@ from app.db.base_class import Base
 class AIModelRun(Base):
     __tablename__ = "ai_model_runs"
 
-    AIModelRunID = Column(BigInteger, primary_key=True, index=True)
+    AIModelRunID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     UserID = Column(BigInteger, ForeignKey("users.UserID"), nullable=False, index=True)
     Capability = Column(String, nullable=False, index=True)
     ModelName = Column(String, nullable=False)

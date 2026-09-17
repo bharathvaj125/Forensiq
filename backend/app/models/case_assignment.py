@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 class CaseAssignment(Base):
     __tablename__ = "case_assignments"
 
-    CaseAssignmentID = Column(BigInteger, primary_key=True, index=True)
+    CaseAssignmentID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     CaseMasterID = Column(BigInteger, ForeignKey("case_master.CaseMasterID"), nullable=False, index=True)
     OfficerID = Column(Integer, ForeignKey("officer.OfficerID"), nullable=False, index=True)
     AssignmentRole = Column(String, nullable=False)

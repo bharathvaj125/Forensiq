@@ -17,15 +17,8 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("access_token");
-    if (token) {
-      if (config.method?.toLowerCase() === "get") {
-        config.params = { ...(config.params || {}), token };
-        if (config.headers) {
-          delete config.headers.Authorization;
-        }
-      } else if (config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -61,11 +54,7 @@ apiClient.interceptors.response.use(
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            if (originalRequest.method?.toLowerCase() === "get") {
-              originalRequest.params = { ...(originalRequest.params || {}), token };
-            } else {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
+            originalRequest.headers.Authorization = `Bearer ${token}`;
             return apiClient(originalRequest);
           })
           .catch((err) => Promise.reject(err));

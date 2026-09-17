@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship
 class Accused(Base):
     __tablename__ = "accused"
 
-    AccusedMasterID = Column(BigInteger, primary_key=True, index=True)
+    AccusedMasterID = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, index=True)
     CaseMasterID = Column(BigInteger, ForeignKey("case_master.CaseMasterID"), nullable=False, index=True)
     AccusedName = Column(String, index=True)
     AgeYear = Column(Integer)

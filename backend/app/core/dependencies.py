@@ -70,17 +70,9 @@ def get_current_user(
                 pass
 
     if not user:
-        # Create synthetic User instance so system account authentication succeeds smoothly
-        uid = int(user_id_str) if user_id_str.isdigit() else 1
-        user = User(
-            UserID=uid,
-            Username=user_id_str if not user_id_str.isdigit() else "ksp_admin",
-            Email="admin@ksp.gov.in",
-            IsActive=True,
-            OfficerID=1,
-            RoleID=1
-        )
-    
+        raise credentials_exception
+
+
     # Set context user ID for database-wide auditing listeners
     try:
         from app.core.context import current_user_id as ctx_user_id

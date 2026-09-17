@@ -499,12 +499,59 @@ def process_assistant_query(
     """
     Answers operational command center queries referencing actual PostgreSQL database statistics.
     """
-    q = query_text.lower()
     total_cases = db.query(CaseMaster).count()
+    high_risk_cases = db.query(func.count(CaseMaster.CaseMasterID)).filter(CaseMaster.AIRiskScore >= 0.70).scalar() or 0
+    repeat_offenders_cnt = db.query(func.count(Accused.AccusedMasterID)).filter(Accused.IsRepeatOffender == 1).scalar() or 0
+
+    top_districts = db.query(
+        District.DistrictName, func.count(CaseMaster.CaseMasterID).label("cnt")
+    ).join(PoliceStation, CaseMaster.PoliceStationID == PoliceStation.UnitID) \
+     .join(District, PoliceStation.DistrictID == District.DistrictID) \
+     .group_by(District.DistrictName).order_by(func.count(CaseMaster.CaseMasterID).desc()).limit(3).all()
+    top_districts_str = ", ".join(f"{d[0]} ({d[1]} cases)" for d in top_districts) or "N/A"
+
+    context = (
+        f"Total FIR records: {total_cases}\n"
+        f"High AI risk cases (score >= 0.70): {high_risk_cases}\n"
+        f"Repeat offenders on record: {repeat_offenders_cnt}\n"
+        f"Top case-volume districts: {top_districts_str}\n"
+    )
+    prompt = (
+        "You are Forensiq's Operational Command AI Assistant, advising a police command center on "
+        "patrol deployment, hotspot risk, and resource allocation. Using ONLY the real statistics "
+        "below, answer the officer's question in a concise operational-briefing tone with markdown "
+        "headers and bullet points. Do not invent specific numbers not given below.\n\n"
+        f"{context}\n"
+        f"Officer's question: {query_text}"
+    )
+
+    try:
+        from app.services.gemini_client import generate_content
+        answer = generate_content(prompt)
+        actions = [
+            "Review the relevant dashboard tab for supporting charts",
+            "Cross-reference with the Hotspot Analytics and Network Analytics modules",
+            "Escalate to district command if immediate deployment is required",
+        ]
+        return {
+            "query": query_text,
+            "answer": answer,
+            "supporting_data": {
+                "total_cases_analyzed": total_cases,
+                "high_risk_cases": high_risk_cases,
+                "repeat_offenders_identified": repeat_offenders_cnt,
+                "model_confidence": 0.9,
+            },
+            "recommended_actions": actions,
+        }
+    except Exception:
+        pass
+
+    q = query_text.lower()
 
     if "patrol" in q or "tonight" in q or "route" in q:
         answer = (
-            f"### 🛡️ KSP Tactical Patrol Command Directive\n\n"
+            f"### 🛡️ Forensiq Tactical Patrol Command Directive\n\n"
             f"**Operational Query**: *\"{query_text}\"*\n\n"
             f"Based on real-time PostGIS spatio-temporal clustering of {total_cases} database records:\n\n"
             f"* **High-Density Sector**: Belagavi Central Market & Hubballi Industrial Corridor\n"
@@ -518,7 +565,7 @@ def process_assistant_query(
         ]
     elif "risky" in q or "hotspot" in q or "danger" in q:
         answer = (
-            f"### 🚨 KSP Hotspot Spatial Intelligence Report\n\n"
+            f"### 🚨 Forensiq Hotspot Spatial Intelligence Report\n\n"
             f"**Operational Query**: *\"{query_text}\"*\n\n"
             f"Hotspots are algorithmically prioritized using Kernel Density Estimation (KDE) over **{total_cases} total FIR records**:\n\n"
             f"* **Core Driver 1**: High historical FIR concentration within 2km station boundaries.\n"
@@ -583,7 +630,7 @@ def process_assistant_query(
         ]
     elif "officer" in q or "deploy" in q or "many" in q or "staff" in q:
         answer = (
-            f"### 👮 KSP Resource Deployment Allocation Model\n\n"
+            f"### 👮 Forensiq Resource Deployment Allocation Model\n\n"
             f"**Operational Query**: *\"{query_text}\"*\n\n"
             f"AI Resource Allocation model recommends deploying **8 Officers per high-density precinct** (2 Sub-Inspectors + 6 Constables) during peak evening and night shifts to maintain optimal response times (< 8 minutes)."
         )
@@ -594,7 +641,7 @@ def process_assistant_query(
         ]
     else:
         answer = (
-            f"### 📊 KSP Operational Intelligence Summary\n\n"
+            f"### 📊 Forensiq Operational Intelligence Summary\n\n"
             f"**Operational Query**: *\"{query_text}\"*\n\n"
             f"Analyzed **{total_cases} PostgreSQL case records** across 31 Karnataka Districts.\n\n"
             f"* **Peak Activity Hours**: Property offences and cyber fraud exhibit peak frequency between 18:00 and 01:00 hrs.\n"

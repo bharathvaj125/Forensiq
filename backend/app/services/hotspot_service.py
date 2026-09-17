@@ -43,6 +43,7 @@ def get_predicted_hotspots(db: Session, current_user: User) -> dict:
     try:
         from app.ml.models.hotspot.predictor import predict_hotspots
         hotspots = predict_hotspots(payload["cases"])
+        result = {"model_version": "phase4-kde-hotspot-v1", "hotspots": hotspots}
     except Exception:
         result = None
 

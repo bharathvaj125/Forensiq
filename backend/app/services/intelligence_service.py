@@ -192,6 +192,7 @@ def detect_case_anomalies(db: Session, current_user: User) -> dict:
     try:
         from app.ml.models.anomaly.detector import detect_anomalies
         findings = detect_anomalies(payload_cases)
+        result = {"model_version": "phase4-isolation-forest-v1", "findings": findings}
     except Exception:
         result = None
 

@@ -47,6 +47,10 @@ def predict_risk(payload: dict) -> dict:
     features_df = pd.DataFrame([feat_dict])
     probabilities = model.predict_proba(features_df[FEATURES])[0]
 
+    # Weighted expected severity: classes are 0=Low, 1=Medium, 2=High/Severe,
+    # so this yields a continuous 0-1 score rather than a single class probability.
+    score = (probabilities[1] * 0.5) + (probabilities[2] * 1.0) if len(probabilities) >= 3 else float(probabilities[-1])
+
     # Percentile-calibrated risk score levels based on dataset distribution
     # (Distribution: Mean ~0.15, 75th percentile ~0.34, Max ~0.52)
     if score >= 0.45:

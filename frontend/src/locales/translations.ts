@@ -15,8 +15,8 @@ export const translations: Record<Language, Record<string, string>> = {
     nav_assistant: "AI Officer Assistant",
     nav_collaboration: "Inter-Agency Vault",
     nav_admin: "System Admin",
-    nav_system_title: "KARNATAKA STATE POLICE",
-    nav_system_sub: "Crime Intelligence System",
+    nav_system_title: "FORENSIQ",
+    nav_system_sub: "AI Crime Intelligence Platform",
     btn_logout: "System Log Out",
     guide_btn: "Walkthrough Guide",
 
@@ -171,8 +171,8 @@ export const translations: Record<Language, Record<string, string>> = {
     nav_assistant: "ಎಐ ಅಧಿಕಾರಿ ಸಹಾಯಕಿ",
     nav_collaboration: "ಸಂಸ್ಥೆಗಳ ಸಹಯೋಗ",
     nav_admin: "ಸಿಸ್ಟಮ್ ನಿರ್ವಹಣೆ",
-    nav_system_title: "ಕರ್ನಾಟಕ ರಾಜ್ಯ ಪೊಲೀಸ್",
-    nav_system_sub: "ಅಪರಾಧ ಗುಪ್ತಚರ ವ್ಯವಸ್ಥೆ",
+    nav_system_title: "FORENSIQ",
+    nav_system_sub: "ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಅಪರಾಧ ಗುಪ್ತಚರ ವೇದಿಕೆ",
     btn_logout: "ಸಿಸ್ಟಮ್‌ನಿಂದ ನಿರ್ಗಮಿಸಿ",
     guide_btn: "ಮಾರ್ಗದರ್ಶಿ ಕೈಪಿಡಿ",
 

@@ -61,7 +61,7 @@ export default function Login() {
         <div className="flex flex-col items-center text-center space-y-3">
           <div className="relative">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-500 flex items-center justify-center font-extrabold text-white text-2xl tracking-widest shadow-xl shadow-blue-600/30 border border-blue-400/30">
-              KSP
+              FQ
             </div>
             <div className="absolute -bottom-1 -right-1 bg-amber-500 text-black rounded-full p-1 border-2 border-[#0a0f1d]">
               <ShieldCheck size={12} />
@@ -70,10 +70,10 @@ export default function Login() {
 
           <div>
             <span className="text-[10px] text-blue-400 font-mono tracking-[0.2em] uppercase font-semibold">
-              Government of Karnataka
+              AI-Powered Crime Intelligence
             </span>
             <h1 className="text-base font-bold text-slate-100 tracking-tight uppercase font-mono mt-0.5">
-              Police Crime Intelligence Platform
+              Forensiq
             </h1>
             <p className="text-[11px] text-slate-400 mt-1 font-mono">
               Unified Officer Command & Control Telemetry
@@ -173,7 +173,7 @@ export default function Login() {
         {/* Footer Security Notice */}
         <div className="border-t border-[#1e293b] pt-4 text-center">
           <p className="text-[10px] text-slate-500 font-mono leading-relaxed">
-            Authorized for Karnataka State Police personnel and appointed Inter-Agency Officers. Unlawful access attempts are logged under IT Act & BNSS regulations.
+            Restricted to authorized officers and appointed inter-agency personnel. Access attempts are logged for security auditing.
           </p>
         </div>
       </div>

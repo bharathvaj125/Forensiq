@@ -82,7 +82,7 @@ export default function Sidebar() {
     <aside className="w-64 flex-shrink-0 bg-[#0d1322] border-r border-[#1e293b] flex flex-col h-screen select-none">
       <div className="p-5 border-b border-[#1e293b] flex items-center gap-3">
         <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center font-bold text-white tracking-wider">
-          KSP
+          FQ
         </div>
         <div>
           <h1 className="text-xs font-bold text-slate-100 tracking-tight leading-tight uppercase font-mono">

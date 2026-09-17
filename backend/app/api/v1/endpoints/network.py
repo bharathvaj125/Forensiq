@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
 from app.core.permissions import verify_permission
@@ -6,10 +7,6 @@ from app.models.user import User
 
 # Services & Schemas
 from app.services import relationship_service, network_service
-from app.schemas.network import CriminalRelationship, GangCommunityResponse, RelationshipCreate, RelationshipVerify
-
-from typing import Optional
-from fastapi import Query
 from app.schemas.network import CriminalRelationship, GangCommunityResponse, RelationshipCreate, RelationshipVerify, NetworkGraphResponse
 
 router = APIRouter()

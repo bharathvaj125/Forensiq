@@ -1,18 +1,6 @@
 """AI network-community orchestration with jurisdiction-safe relationship edges."""
 
 import httpx
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.core.config import settings
-from app.middleware.jurisdiction_scope import apply_jurisdiction_filter
-from app.models.accused import Accused
-from app.models.case_master import CaseMaster
-from app.models.criminal_relationship import CriminalRelationship
-from app.models.user import User
-from app.services import ai_audit_service
-
-
 from typing import Optional, List, Dict
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -26,7 +14,6 @@ from app.models.criminal_relationship import CriminalRelationship
 from app.models.evidence import Evidence
 from app.models.vehicle import Vehicle
 from app.models.victim import Victim
-from app.models.witness import Witness
 from app.models.police_station import PoliceStation
 from app.models.user import User
 from app.services import ai_audit_service
@@ -167,7 +154,6 @@ def get_dynamic_network_graph(
     vehicles = db.query(Vehicle).filter(Vehicle.CaseMasterID.in_(case_ids)).all()
     evidences = db.query(Evidence).filter(Evidence.CaseMasterID.in_(case_ids)).all()
     victims = db.query(Victim).filter(Victim.CaseMasterID.in_(case_ids)).all()
-    witnesses = db.query(Witness).filter(Witness.CaseMasterID.in_(case_ids)).all()
 
     ps_ids = {c.PoliceStationID for c in cases if c.PoliceStationID}
     stations = {ps.UnitID: ps.UnitName for ps in db.query(PoliceStation).filter(PoliceStation.UnitID.in_(ps_ids)).all()} if ps_ids else {}

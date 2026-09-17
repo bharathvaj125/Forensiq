@@ -1,7 +1,7 @@
 """Core Backend orchestration for Phase 4 intelligence features."""
 
 from collections.abc import Iterable
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 from fastapi import HTTPException, status

@@ -17,29 +17,9 @@ from app.services import ai_audit_service
 
 
 def _embed_texts(texts: list[str]) -> list[list[float]]:
-    """Call the isolated AI service or return deterministic fallback vectors if AI engine is offline."""
-    try:
-        with httpx.Client(timeout=5.0) as client:
-            response = client.post(f"{settings.AI_ENGINE_BASE_URL}/ai/v1/embeddings", json={"texts": texts})
-            if response.status_code == 200:
-                payload = response.json()
-                vectors = payload.get("vectors", [])
-                if payload.get("dimensions") == 768 and len(vectors) == len(texts):
-                    return vectors
-    except Exception:
-        pass
-
-    # Heuristic fallback vector generation (768 dimensions)
-    import hashlib
-    vectors = []
-    for txt in texts:
-        h = hashlib.sha256(txt.encode('utf-8')).hexdigest()
-        val = int(h, 16)
-        v = [(((val >> (i % 64)) & 0xFF) / 255.0) * 2.0 - 1.0 for i in range(768)]
-        # Normalize
-        norm = (sum(x * x for x in v) ** 0.5) or 1.0
-        vectors.append([x / norm for x in v])
-    return vectors
+    """Embeds case narratives via Gemini for real semantic similarity search."""
+    from app.services.gemini_client import embed_texts as gemini_embed_texts
+    return gemini_embed_texts(texts, dimensions=768)
 
 
 def predict_case_risk(db: Session, case: CaseMaster, current_user: User) -> dict:

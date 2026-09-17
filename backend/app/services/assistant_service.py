@@ -125,15 +125,28 @@ def query_assistant(db: Session, query: str, current_user: User) -> dict:
     full_context_lines = telemetry_lines + search_lines
     context_str = "\n".join(full_context_lines)
 
-    payload = {"query": query, "context": context_str}
     result = None
     try:
-        with httpx.Client(timeout=10.0) as client:
-            response = client.post(f"{settings.AI_ENGINE_BASE_URL}/ai/v1/assistant/query", json=payload)
-            if response.status_code == 200:
-                result = response.json()
+        from app.services.gemini_client import generate_content
+        prompt = (
+            "You are the Forensiq AI Crime Intelligence Assistant, helping an Indian police officer "
+            "investigate cases. Answer the officer's question concisely and professionally, using ONLY "
+            "the FIR records below - do not invent case details that aren't listed. Reference case "
+            "numbers/IDs when relevant.\n\n"
+            f"{context_str}\n\n"
+            f"Officer's question: {query}"
+        )
+        answer_text = generate_content(prompt)
+        result = {
+            "answer": answer_text,
+            "action": "generate_pdf" if ("pdf" in q_lower or "report" in q_lower or "download" in q_lower) else None,
+            "target_case_id": source_cases[0].CaseMasterID if source_cases else None,
+            "source_case_ids": [c.CaseMasterID for c in source_cases[:5]],
+            "confidence": 0.9,
+            "model_version": settings.LLM_MODEL,
+        }
     except Exception:
-        pass
+        result = None
 
     if not result:
         # Smart Heuristic RAG Fallback
@@ -176,7 +189,7 @@ def query_assistant(db: Session, query: str, current_user: User) -> dict:
         db,
         user_id=current_user.UserID,
         capability="assistant_chat",
-        model_name="gemini-2.5-flash",
+        model_name=settings.LLM_MODEL,
         model_version=result.get("model_version", "v3"),
         resource_id=None,
         summary={"query": query, "source_cases": len(result.get("source_case_ids", []))}

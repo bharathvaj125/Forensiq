@@ -65,13 +65,13 @@ class Settings(BaseSettings):
     AI_ENGINE_BASE_URL: str = os.getenv("AI_ENGINE_BASE_URL", "http://ai-engine:8100")
 
     # --- LLM settings ---
-    LLM_PROVIDER: str = "anthropic"
-    LLM_API_KEY: str = os.getenv("LLM_API_KEY", "change_me")
-    LLM_MODEL: str = "claude-sonnet-4-6"
+    LLM_PROVIDER: str = "gemini"
+    LLM_API_KEY: str = os.getenv("LLM_API_KEY", os.getenv("GEMINI_API_KEY", "change_me"))
+    LLM_MODEL: str = "gemini-3.6-flash"
 
     # --- Embeddings ---
-    EMBEDDING_MODEL_NAME: str = "sentence-transformers/LaBSE"
-    EMBEDDING_MODEL_VERSION: str = "phase4-labse-v1"
+    EMBEDDING_MODEL_NAME: str = "gemini-embedding-001"
+    EMBEDDING_MODEL_VERSION: str = "phase4-gemini-768d-v1"
 
     model_config = SettingsConfigDict(
         env_file=".env",

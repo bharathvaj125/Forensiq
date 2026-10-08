@@ -11,7 +11,7 @@ interface ExplanationCardProps {
 
 export default function ExplanationCard({
   factors,
-  title = "AI Decision Attributes (SHAP/Explainability Analysis)",
+  title = "What drove this result",
 }: ExplanationCardProps) {
   return (
     <div className="bg-[#111827] border border-[#1e293b] rounded p-5 select-none">

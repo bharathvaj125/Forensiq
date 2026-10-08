@@ -4,14 +4,14 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError
-from app.core.exceptions import KSPException
+from app.core.exceptions import ForensiqException
 
 logger = logging.getLogger("ksp_backend")
 
-def ksp_exception_handler(request: Request, exc: KSPException) -> JSONResponse:
-    """Handles KSP custom business rule exceptions."""
+def forensiq_exception_handler(request: Request, exc: ForensiqException) -> JSONResponse:
+    """Handles Forensiq business-rule exceptions."""
     logger.warning(
-        f"KSP Exception | Path: {request.url.path} | Exception: {exc.__class__.__name__} | Detail: {exc.message}"
+        f"Forensiq exception | Path: {request.url.path} | Exception: {exc.__class__.__name__} | Detail: {exc.message}"
     )
     return JSONResponse(
         status_code=exc.status_code,

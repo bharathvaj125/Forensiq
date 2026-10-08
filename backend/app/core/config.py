@@ -1,4 +1,6 @@
+import logging
 import os
+import secrets
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,6 +38,16 @@ def get_discovered_db_url() -> str:
     os.environ["DATABASE_URL"] = default_url
     return default_url
 
+def get_jwt_secret() -> str:
+    """The signing key for access/refresh tokens. If none is configured, a random one is generated for this process
+    (sessions end when the server restarts) rather than falling back to a value that is public in the source code."""
+    configured = os.getenv("JWT_SECRET_KEY", "").strip()
+    if configured and not configured.startswith("dev-only"):
+        return configured
+    logging.getLogger("ksp_backend").warning("JWT_SECRET_KEY is not set: using a random per-process signing key, so logins reset on restart. Set JWT_SECRET_KEY in the environment.")
+    return secrets.token_urlsafe(48)
+
+
 class Settings(BaseSettings):
     # --- PostgreSQL / Database ---
     POSTGRES_USER: str = "ksp_admin"
@@ -49,7 +61,7 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = os.getenv("REDIS_URL", None)
 
     # --- JWT Auth ---
-    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "dev-only-insecure-secret-set-a-real-one-in-env")
+    JWT_SECRET_KEY: str = get_jwt_secret()
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_TOKEN_EXPIRE_HOURS: int = 8
@@ -59,15 +71,12 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
     CORS_ALLOWED_ORIGINS: str = "*"
 
-    # --- AI Engine ---
-    AI_ENGINE_HOST: str = "0.0.0.0"
-    AI_ENGINE_PORT: int = 8100
-    AI_ENGINE_BASE_URL: str = os.getenv("AI_ENGINE_BASE_URL", "http://ai-engine:8100")
-
     # --- LLM settings ---
     LLM_PROVIDER: str = "gemini"
     LLM_API_KEY: str = os.getenv("LLM_API_KEY", os.getenv("GEMINI_API_KEY", "change_me"))
-    LLM_MODEL: str = "gemini-3.6-flash"
+    LLM_MODEL: str = "gemini-3.5-flash-lite"
+    # Models tried in order: free-tier quotas are per model per day, so a chain keeps the assistant available.
+    LLM_MODELS: str = os.getenv("LLM_MODELS", "gemini-3.5-flash-lite,gemini-flash-lite-latest,gemini-3.1-flash-lite,gemini-3.8-flash,gemini-3.6-flash")
 
     # --- Embeddings ---
     EMBEDDING_MODEL_NAME: str = "gemini-embedding-001"

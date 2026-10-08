@@ -412,46 +412,60 @@ def create_external_officer_request(db: Session, req_data: dict, current_user: U
     return req
 
 
-# AI Agency Recommendation Engine
+# AI Agency Recommendation
+AGENCY_SYSTEM_PROMPT = (
+    "You advise a police investigator which external agency to involve in a case. Choose exactly one agency from the "
+    "list provided, using only the case details provided. Reply with JSON: {\"agency_code\": <code from the list>, "
+    "\"reason\": <one or two sentences naming the case facts that justify the choice>}. If no agency is clearly "
+    "warranted, pick the best fit and say so in the reason."
+)
+
+
 def recommend_agency_for_case(db: Session, case_id: int) -> dict:
+    """Ask the model to pick, from the agencies in the database, the best fit for the case's actual crime type,
+    evidence and facts. No confidence figure is reported: the model's self-assessment is not a measured probability."""
+    import json
+    from app.services import reference_data
+    from app.services.gemini_client import GeminiError, GeminiQuotaError, generate_raw
+
     case = db.query(CaseMaster).filter(CaseMaster.CaseMasterID == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found.")
+    agencies = db.query(ExternalAgency).filter(ExternalAgency.Status == "Active").all()
+    if not agencies:
+        raise HTTPException(status_code=404, detail="No active external agencies are registered.")
 
-    facts = (case.BriefFacts or "").lower()
+    evidence_types = sorted({row[0] for row in db.query(Evidence.EvidenceType).filter(Evidence.CaseMasterID == case_id).all() if row[0]})
+    details = {
+        "crime_type": reference_data.crime_head_names(db).get(case.CrimeMajorHeadID),
+        "crime_subtype": reference_data.crime_subhead_names(db).get(case.CrimeMinorHeadID),
+        "heinous": case.GravityOffenceID == 1,
+        "evidence_types": evidence_types,
+        "facts": case.BriefFacts,
+    }
+    agency_list = [{"code": a.AgencyCode, "name": a.AgencyName, "type": a.AgencyType} for a in agencies]
+    prompt = f"Agencies: {json.dumps(agency_list)}\nCase: {json.dumps(details, default=str)}"
+    try:
+        reply = generate_raw([{"role": "user", "parts": [{"text": prompt}]}], system_instruction=AGENCY_SYSTEM_PROMPT, json_output=True)
+        choice = json.loads("".join(part.get("text", "") for part in reply["parts"]))
+    except GeminiQuotaError as exc:
+        raise HTTPException(status_code=429, detail="The AI model has used up its request quota for now. Try again later.") from exc
+    except (GeminiError, ValueError) as exc:
+        raise HTTPException(status_code=503, detail="The agency recommendation model is unavailable right now.") from exc
 
-    if any(k in facts for k in ["bank", "cyber", "fraud", "money laundering", "hawala", "cheating", "financial", "crore", "lakh"]):
-        agency_code = "ED"
-        confidence = 0.93
-        reason = f"FIR Brief Facts cite financial irregularity / monetary fraud. Enforcement Directorate (ED) recommended for anti-money laundering scope."
-    elif any(k in facts for k in ["interstate", "kidnap", "extortion", "syndicate", "gang", "cbi", "corruption", "bribe"]):
-        agency_code = "CBI"
-        confidence = 0.89
-        reason = f"Case facts indicate multi-jurisdictional syndicate / interstate offences. Central Bureau of Investigation (CBI) recommended."
-    elif any(k in facts for k in ["terror", "bomb", "explosive", "unlawful assembly", "uapa", "conspiracy", "national security"]):
-        agency_code = "NIA"
-        confidence = 0.98
-        reason = f"FIR citations contain counter-terrorism / explosive keywords. National Investigation Agency (NIA) recommended."
-    elif any(k in facts for k in ["dna", "poison", "ballistics", "chemical", "blood", "forensic", "postmortem", "viscera"]):
-        agency_code = "KSCFSL"
-        confidence = 0.95
-        reason = f"Case evidence requires advanced DNA / chemical ballistics analysis. Karnataka State Forensic Science Laboratory (KSCFSL) recommended."
-    else:
-        agency_code = "NCRB"
-        confidence = 0.91
-        reason = f"Inter-state suspect identification & fingerprint record verification recommended via National Crime Records Bureau (NCRB)."
-
-    agency = db.query(ExternalAgency).filter(ExternalAgency.AgencyCode == agency_code).first()
-
+    agency = next((a for a in agencies if a.AgencyCode == choice.get("agency_code")), None)
+    if agency is None:
+        raise HTTPException(status_code=502, detail="The model chose an agency that is not registered.")
     return {
         "case_id": case_id,
         "case_no": case.CaseNo,
-        "recommended_agency_code": agency_code,
-        "recommended_agency_id": agency.AgencyID if agency else None,
-        "recommended_agency_name": agency.AgencyName if agency else agency_code,
-        "confidence_score": confidence,
-        "ai_explanation": reason,
-        "cited_facts": case.BriefFacts[:200] if case.BriefFacts else "Standard IPC Investigation"
+        "recommended_agency_code": agency.AgencyCode,
+        "recommended_agency_id": agency.AgencyID,
+        "recommended_agency_name": agency.AgencyName,
+        "confidence_score": None,
+        "ai_explanation": str(choice.get("reason", "")),
+        "model": reply.get("_model"),
+        "cited_facts": (case.BriefFacts or "")[:200],
     }
 
 

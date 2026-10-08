@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { caseService } from "../../services/caseService";
+import { API_BASE_URL } from "../../services/apiClient";
 import { intelligenceService } from "../../services/intelligenceService";
+import { useReferenceOptions } from "../../services/referenceService";
 import DataTable from "../../components/common/DataTable";
 import ExplanationCard from "../../components/charts/ExplanationCard";
 import NetworkGraphCanvas from "../../components/graph/NetworkGraphCanvas";
@@ -28,6 +30,7 @@ import {
   CheckCircle
 } from "lucide-react";
 import { taskService, TaskDelegation } from "../../services/taskService";
+import FirRegistrationModal from "./FirRegistrationModal";
 
 import { useAuth } from "../../app/providers/AuthProvider";
 import { useLanguage } from "../../app/providers/LanguageContext";
@@ -39,39 +42,11 @@ export default function Investigation() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const isAdmin = user?.role?.RoleName === "Admin";
-  const isSeniorOfficer =
-    isAdmin ||
-    user?.role?.RoleName === "SCRB_Officer" ||
-    user?.role?.RoleName === "SHO" ||
-    user?.Username?.includes("sp") ||
-    user?.Username?.includes("verma") ||
-    user?.Username?.includes("admin");
-
-  const isExternalOfficer =
-    user?.role?.RoleName === "ExternalAgencyOfficer" ||
-    user?.Username?.includes("cbi") ||
-    user?.Username?.includes("fsl") ||
-    user?.Username?.includes("ed");
-
-  const isConstable = !isSeniorOfficer && !isExternalOfficer;
-
-  const username = user?.Username?.toLowerCase() || "";
+  // Authority comes from the role's permissions as the server enforces them, not from guessing at usernames.
   const roleName = user?.role?.RoleName || "";
+  const isConstable = roleName === "Constable"; // station-bounded by the server
+  const canRegisterFIR = !!user?.Permissions?.includes("cases:create");
 
-  // FIR Registration Permissions Rule:
-  // Admin: NO FIR registration (Supervisory only)
-  // External Agencies (CBI, FSL, ED): NO FIR registration
-  // Constable (PC) & ASI: NO FIR registration (Junior beat officers)
-  // Head Constable (HC), PSI, SI, SHO, PI, DySP, SP, DIG, IGP, ADGP, DGP: CAN REGISTER FIR!
-  const isJuniorConstableOrASI =
-    username.includes("suda") ||
-    username.includes("constable_officer") ||
-    username.includes("asi") ||
-    (roleName === "Constable" && !username.includes("hc"));
-
-  const canRegisterFIR = !isAdmin && !isExternalOfficer && !isJuniorConstableOrASI;
-  
   const caseId = id ? parseInt(id) : null;
   const [activeSubTab, setActiveSubTab] = useState("overview");
   const [selectedCompareCase, setSelectedCompareCase] = useState<any>(null);
@@ -80,135 +55,26 @@ export default function Investigation() {
   // Evidence Upload & Preview State
   const [selectedEvidenceForPreview, setSelectedEvidenceForPreview] = useState<any>(null);
   const [isUploadEvidenceModalOpen, setIsUploadEvidenceModalOpen] = useState(false);
-  const [evidenceTypeInput, setEvidenceTypeInput] = useState("CCTV Footage");
+  const [evidenceTypeInput, setEvidenceTypeInput] = useState("");
   const [evidenceDescInput, setEvidenceDescInput] = useState("");
   const [evidenceFileInput, setEvidenceFileInput] = useState<File | null>(null);
   const [evidenceUploadError, setEvidenceUploadError] = useState<string | null>(null);
 
-  // Complete BNS Compliant Register Incident / FIR State
+  // FIR registration lives in FirRegistrationModal; this page only opens it and reports the outcome.
   const [isRegisterIncidentModalOpen, setIsRegisterIncidentModalOpen] = useState(false);
-  const [firModalTab, setFirModalTab] = useState<"police" | "complainant" | "incident" | "accused" | "property">("police");
-  
-  // Police Details
-  const [regFirNo, setRegFirNo] = useState(`FIR-KSP-2026-${Math.floor(1000 + Math.random() * 9000)}`);
-  const [regDistrictId, setRegDistrictId] = useState("5"); // Default: Bengaluru Urban
-  const [regStationName, setRegStationName] = useState("Vidhana Soudha PS, Bengaluru Urban");
-  const [regSectionsOfLaw, setRegSectionsOfLaw] = useState("Sec 303(2) BNS, Sec 318 BNS & Sec 66D IT Act");
-  const [regPriority, setRegPriority] = useState("High");
-
-  // Complainant Details
-  const [regComplainantName, setRegComplainantName] = useState("");
-  const [regComplainantRelative, setRegComplainantRelative] = useState("");
-  const [regComplainantAge, setRegComplainantAge] = useState("");
-  const [regComplainantGender, setRegComplainantGender] = useState("Male");
-  const [regComplainantAddress, setRegComplainantAddress] = useState("");
-  const [regComplainantMobile, setRegComplainantMobile] = useState("");
-  const [regComplainantOccupation, setRegComplainantOccupation] = useState("");
-  const [regComplainantIdProof, setRegComplainantIdProof] = useState("Aadhaar Card");
-
-  // Incident Details
-  const [regIncidentDate, setRegIncidentDate] = useState(new Date().toISOString().split("T")[0]);
-  const [regIncidentTime, setRegIncidentTime] = useState("14:30");
-  const [regOccurrencePlace, setRegOccurrencePlace] = useState("");
-  const [regMajorHead, setRegMajorHead] = useState("Crimes Against Property");
-  const [regBriefFacts, setRegBriefFacts] = useState("");
-  const [regHowComplainantKnew, setRegHowComplainantKnew] = useState("Direct Victim / Eye Witness Discovery");
-
-  // Accused Details
-  const [regAccusedName, setRegAccusedName] = useState("");
-  const [regAccusedAgeGender, setRegAccusedAgeGender] = useState("");
-  const [regAccusedAddress, setRegAccusedAddress] = useState("");
-  const [regAccusedPhysicalDesc, setRegAccusedPhysicalDesc] = useState("");
-  const [regAccusedRelationship, setRegAccusedRelationship] = useState("");
-
-  // Witness Details
-  const [regWitnessName, setRegWitnessName] = useState("");
-  const [regWitnessAddress, setRegWitnessAddress] = useState("");
-  const [regWitnessContact, setRegWitnessContact] = useState("");
-
-  // Property & Vehicle Details
-  const [regStolenItems, setRegStolenItems] = useState("");
-  const [regEstimatedValue, setRegEstimatedValue] = useState("");
-  const [regVehicleDetails, setRegVehicleDetails] = useState("");
-
-  // Evidence File Upload Attachment
-  const [regEvidenceFile, setRegEvidenceFile] = useState<File | null>(null);
-  const [regEvidenceType, setRegEvidenceType] = useState("CCTV / Video Evidence");
-
   const [registerSuccessToast, setRegisterSuccessToast] = useState<string | null>(null);
 
-  const handleRegisterIncidentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regBriefFacts.trim() && !regComplainantName.trim()) return;
-
-    // Construct full BNS compliant narrative
-    const fullNarrative = `[FIR NO: ${regFirNo}] [LAW SECTIONS: ${regSectionsOfLaw}]
-Occurrence Place: ${regOccurrencePlace || "Jurisdiction Sector"} (Date: ${regIncidentDate} Time: ${regIncidentTime})
-Complainant: ${regComplainantName || "Anonymous"} (${regComplainantGender}, Age: ${regComplainantAge || "N/A"}, Ph: ${regComplainantMobile || "N/A"}) Relative: ${regComplainantRelative || "N/A"}, Addr: ${regComplainantAddress || "N/A"}, ID Proof: ${regComplainantIdProof}
-Accused Details: ${regAccusedName || "Unknown Suspects"} (Addr: ${regAccusedAddress || "N/A"}, Physical: ${regAccusedPhysicalDesc || "N/A"}, Rel: ${regAccusedRelationship || "N/A"})
-Witnesses: ${regWitnessName || "N/A"} (Addr: ${regWitnessAddress || "N/A"}, Ph: ${regWitnessContact || "N/A"})
-Stolen Property: ${regStolenItems || "N/A"} (Est. Value: ₹${regEstimatedValue || "0"}, Vehicle: ${regVehicleDetails || "N/A"})
-Brief Facts Narrative: ${regBriefFacts}
-Discovery Method: ${regHowComplainantKnew}
-Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Officer"})`;
-
-    try {
-      const newCaseData = {
-        CaseNo: regFirNo,
-        DistrictID: parseInt(regDistrictId),
-        PoliceStationID: 101,
-        PoliceStationName: regStationName,
-        InvestigationPriority: regPriority,
-        BriefFacts: fullNarrative,
-        CrimeMajorHeadID: regMajorHead,
-        ComplainantName: regComplainantName || "Anonymous Informant",
-        AccusedName: regAccusedName || "Unknown Suspects",
-      };
-
-      const res = await caseService.registerCase(newCaseData as any);
-      const createdCaseId = res?.CaseMasterID || res?.id || 1;
-
-      // Upload Evidence Attachment File if provided
-      if (regEvidenceFile && createdCaseId) {
-        try {
-          const formData = new FormData();
-          formData.append("file", regEvidenceFile);
-          formData.append("evidence_type", regEvidenceType);
-          formData.append("description", `Attached FIR Evidence for ${regFirNo}`);
-          await caseService.uploadEvidenceFile(createdCaseId, formData);
-        } catch (uploadErr) {
-          console.warn("Evidence upload notice:", uploadErr);
-        }
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["casesList"] });
-      setIsRegisterIncidentModalOpen(false);
-
-      // Reset form fields
-      setRegBriefFacts("");
-      setRegComplainantName("");
-      setRegAccusedName("");
-      setRegEvidenceFile(null);
-      setRegFirNo(`FIR-KSP-2026-${Math.floor(1000 + Math.random() * 9000)}`);
-
-      setRegisterSuccessToast(t(`Official FIR #${regFirNo} registered under Bharatiya Nyaya Sanhita (BNS)!`, `ಎಫ್.ಐ.ಆರ್ ಪ್ರಕರಣ ${regFirNo} ನೋಂದಾಯಿಸಲಾಗಿದೆ!`));
-      setTimeout(() => setRegisterSuccessToast(null), 5000);
-    } catch (err) {
-      console.error("Failed to register incident:", err);
-      queryClient.invalidateQueries({ queryKey: ["casesList"] });
-      setIsRegisterIncidentModalOpen(false);
-      setRegisterSuccessToast(t(`Official FIR #${regFirNo} registered under Bharatiya Nyaya Sanhita (BNS)!`, `ಎಫ್.ಐ.ಆರ್ ಪ್ರಕರಣ ${regFirNo} ನೋಂದಾಯಿಸಲಾಗಿದೆ!`));
-      setTimeout(() => setRegisterSuccessToast(null), 5000);
-    }
+  const handleFirRegistered = (newCaseId: number, caseNo: string) => {
+    setIsRegisterIncidentModalOpen(false);
+    setRegisterSuccessToast(`${t("FIR registered", "ಎಫ್.ಐ.ಆರ್ ನೋಂದಾಯಿಸಲಾಗಿದೆ")}: ${caseNo}`);
+    setTimeout(() => setRegisterSuccessToast(null), 6000);
+    navigate(`/cases/${newCaseId}`);
   };
 
   const getFullMediaUrl = (url?: string) => {
     if (!url) return "";
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    const apiHost = (import.meta as any).env?.VITE_API_BASE_URL
-      ? (import.meta as any).env.VITE_API_BASE_URL.replace("/api/v1", "")
-      : "http://localhost:8000";
-    return `${apiHost}${url}`;
+    return `${new URL(API_BASE_URL, window.location.origin).origin}${url}`;
   };
 
   const uploadEvidenceMutation = useMutation({
@@ -228,7 +94,7 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
         queryClient.invalidateQueries({ queryKey: ["caseEvidence", caseId] });
       }
       setIsUploadEvidenceModalOpen(false);
-      setEvidenceTypeInput("CCTV Footage");
+      setEvidenceTypeInput("");
       setEvidenceDescInput("");
       setEvidenceFileInput(null);
       setEvidenceUploadError(null);
@@ -265,31 +131,27 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [districtId, setDistrictId] = useState("");
-  const [stationId, _setStationId] = useState("");
-  const [statusId, setStatusId] = useState("");
+  const [crimeCategory, setCrimeCategory] = useState("");
   const [riskCategory, setRiskCategory] = useState("all");
   const [sortBy, setSortBy] = useState("date_desc");
+  const reference = useReferenceOptions();
+  const gravityName = (id: number | null | undefined) => reference.gravity_levels.find((g) => g.id === id)?.name ?? (id ? `Level ${id}` : "—");
+  const crimeHeadName = (id: number | null | undefined) => reference.crime_heads.find((c) => c.id === id)?.name ?? (id ? `#${id}` : "—");
+  const statusName = (id: number | null | undefined) => reference.case_statuses.find((c) => c.id === id)?.name ?? (id ? `#${id}` : "—");
+  const genderName = (id: number | null | undefined) => reference.genders.find((g) => g.id === id)?.name ?? "—";
 
-  const karnatakaDistricts: Record<number, string> = {
-    1: "Bagalkot", 2: "Ballari", 3: "Belagavi", 4: "Bengaluru Rural", 5: "Bengaluru Urban",
-    6: "Bidar", 7: "Chamarajanagar", 8: "Chikballapur", 9: "Chikkamagaluru", 10: "Chitradurga",
-    11: "Dakshina Kannada", 12: "Davanagere", 13: "Dharwad", 14: "Gadag", 15: "Hassan",
-    16: "Haveri", 17: "Kalaburagi", 18: "Kodagu", 19: "Kolar", 20: "Koppal",
-    21: "Mandya", 22: "Mysuru", 23: "Raichur", 24: "Ramanagara", 25: "Shivamogga",
-    26: "Tumakuru", 27: "Udupi", 28: "Uttara Kannada", 29: "Vijayapura", 30: "Yadgir", 31: "Vijayanagara"
-  };
-
-  // Fetch Cases list
+  // Fetch Cases list; the "category" dropdown maps to server-side filters over every case, not just the page shown.
   const { data: listData, isLoading: isListLoading } = useQuery({
-    queryKey: ["casesList", page, search, districtId, stationId, statusId, sortBy],
+    queryKey: ["casesList", page, search, districtId, crimeCategory, riskCategory, sortBy],
     queryFn: () =>
       caseService.getCases({
         page,
         pageSize: 25,
         search: search.trim() || undefined,
         districtId: districtId ? parseInt(districtId) : undefined,
-        stationId: stationId ? parseInt(stationId) : undefined,
-        statusId: statusId ? parseInt(statusId) : undefined,
+        crimeCategory: crimeCategory || undefined,
+        riskLevel: riskCategory === "risk" ? "High,Severe" : undefined,
+        statusGroup: riskCategory === "pending" ? "open" : riskCategory === "finished" ? "closed" : undefined,
         sortBy: sortBy,
       }),
     enabled: !caseId,
@@ -324,24 +186,32 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
   });
 
   // Fetch Case Vehicles
-  useQuery({
+  const { data: vehiclesData } = useQuery({
     queryKey: ["caseVehicles", caseId],
     queryFn: () => caseService.getCaseVehicles(caseId!),
-    enabled: !!caseId && activeSubTab === "evidence",
+    enabled: !!caseId && (activeSubTab === "evidence" || activeSubTab === "network"),
   });
 
   // Fetch Case Witnesses
   const { data: witnessesData } = useQuery({
     queryKey: ["caseWitnesses", caseId],
     queryFn: () => caseService.getCaseWitnesses(caseId!),
-    enabled: !!caseId && activeSubTab === "evidence",
+    enabled: !!caseId && (activeSubTab === "evidence" || activeSubTab === "network"),
+  });
+
+  // Chronology built by the server from the case's dates, audit trail, assignments, evidence and notes
+  const { data: timelineData, isLoading: isTimelineLoading } = useQuery({
+    queryKey: ["caseTimeline", caseId],
+    queryFn: () => caseService.getCaseTimeline(caseId!),
+    enabled: !!caseId && activeSubTab === "timeline",
   });
 
   // Fetch AI Risk Scorer details
-  const { data: aiRiskData, isLoading: isRiskLoading } = useQuery({
+  const { data: aiRiskData, isLoading: isRiskLoading, error: riskError } = useQuery({
     queryKey: ["caseRisk", caseId],
     queryFn: () => intelligenceService.predictCaseRisk(caseId!),
     enabled: !!caseId && activeSubTab === "ai",
+    retry: false,
   });
 
   // Fetch Similar Cases
@@ -353,610 +223,47 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
 
 
 
-  // Embeddings Backfiller Mutation
+  // Index more FIRs for similar-case search (resumable; the server reports how many remain and why it stopped)
+  const [embedNote, setEmbedNote] = useState<string | null>(null);
   const backfillMutation = useMutation({
     mutationFn: () => intelligenceService.backfillEmbeddings(),
-    onSuccess: () => {
-      alert("LaBSE sentence embeddings backfilled successfully.");
+    onSuccess: (result: any) => {
+      setEmbedNote(`${result.Created ?? 0} FIRs indexed with ${result.ModelName}.${result.Pending != null ? ` ${result.Pending} still pending.` : ""}${result.Note ? ` ${result.Note}` : ""}`);
       queryClient.invalidateQueries({ queryKey: ["similarCases"] });
     },
+    onError: (err: any) => setEmbedNote(err?.response?.data?.detail || "Indexing failed."),
+  });
+
+  // Case actions: status, priority and journal notes (the server enforces who may do what)
+  const canUpdateCase = !!user?.Permissions?.includes("cases:update");
+  const canAnnotate = !!user?.Permissions?.includes("cases:annotate");
+  const [actionNote, setActionNote] = useState("");
+  const [noteCategory, setNoteCategory] = useState("General Note");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const refreshCase = () => {
+    queryClient.invalidateQueries({ queryKey: ["caseDetails", caseId] });
+    queryClient.invalidateQueries({ queryKey: ["caseTimeline", caseId] });
+    queryClient.invalidateQueries({ queryKey: ["casesList"] });
+    setActionError(null);
+  };
+  const failure = (err: any) => setActionError(err?.response?.data?.detail || "The change could not be saved.");
+  const statusMutation = useMutation({ mutationFn: (statusId: number) => caseService.updateCaseStatus(caseId!, statusId), onSuccess: refreshCase, onError: failure });
+  const priorityMutation = useMutation({ mutationFn: (priority: string) => caseService.updateCasePriority(caseId!, priority), onSuccess: refreshCase, onError: failure });
+  const noteMutation = useMutation({
+    mutationFn: () => caseService.addAnnotation(caseId!, { NotesText: actionNote.trim(), Category: noteCategory }),
+    onSuccess: () => { setActionNote(""); refreshCase(); },
+    onError: failure,
   });
 
   const renderRegisterFirModal = () => (
     <>
-      {/* Register Incident Toast */}
       {registerSuccessToast && (
-        <div className="fixed top-5 right-5 bg-emerald-600 text-white font-mono text-xs px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-2 animate-in slide-in-from-top duration-200">
+        <div className="fixed top-5 right-5 bg-emerald-600 text-white font-mono text-xs px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-2">
           <CheckCircle size={18} />
           <span>{registerSuccessToast}</span>
         </div>
       )}
-
-      {/* BNS COMPLIANT FIR REGISTRATION MODAL */}
-      {isRegisterIncidentModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <form
-            onSubmit={handleRegisterIncidentSubmit}
-            className="bg-[#0b1324] border border-emerald-500/40 rounded-2xl max-w-3xl w-full flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.15)] animate-in fade-in zoom-in-95 duration-150 select-none font-sans overflow-hidden max-h-[90vh]"
-          >
-            {/* Modal Header */}
-            <div className="p-5 border-b border-[#1e293b] flex justify-between items-center bg-[#0f172a]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold font-mono">
-                  FIR
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-wider flex items-center gap-2">
-                    <span>{t("Official BNS FIR Registration Portal", "ಅಧಿಕೃತ ಬಿ.ಎನ್.ಎಸ್ ಎಫ್.ಐ.ಆರ್ ಅಪರಾಧ ನೋಂದಣಿ")}</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    Bharatiya Nyaya Sanhita (BNS) & Criminal Procedure Registration Telemetry
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRegisterIncidentModalOpen(false)}
-                className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-[#1e293b] transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Sub-Tab Selector */}
-            <div className="flex bg-[#0f172a] border-b border-[#1e293b] px-4 pt-2 gap-2 overflow-x-auto font-mono text-xs">
-              <button
-                type="button"
-                onClick={() => setFirModalTab("police")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "police"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>🏛️ Police & Law</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("complainant")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "complainant"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>👤 Complainant</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("incident")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "incident"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>📍 Incident Details</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("accused")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "accused"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>👤 Accused & Witness</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("property")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "property"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>🚗 Property & Files</span>
-              </button>
-            </div>
-
-            {/* Modal Body Form Content */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs font-sans flex-1 max-h-[60vh]">
-              {/* TAB 1: POLICE & LAW DETAILS */}
-              {firModalTab === "police" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Assigned FIR Number:</label>
-                      <input
-                        type="text"
-                        required
-                        value={regFirNo}
-                        onChange={(e) => setRegFirNo(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-amber-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Registering Officer Name & Rank:</label>
-                      <input
-                        type="text"
-                        disabled
-                        value={`${user?.Username || "Officer"} (${user?.Rank || "Head Constable"})`}
-                        className="w-full bg-[#0f172a] border border-[#1e293b] text-slate-300 text-xs rounded px-3 py-2 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Jurisdiction District:</label>
-                      <select
-                        value={regDistrictId}
-                        onChange={(e) => setRegDistrictId(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        {Object.entries(karnatakaDistricts).map(([dId, dName]) => (
-                          <option key={dId} value={dId}>{translateData(dName)}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Police Station Precinct:</label>
-                      <input
-                        type="text"
-                        required
-                        value={regStationName}
-                        onChange={(e) => setRegStationName(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Sections of Law Applied (BNS / Special Laws):</label>
-                    <input
-                      type="text"
-                      required
-                      value={regSectionsOfLaw}
-                      onChange={(e) => setRegSectionsOfLaw(e.target.value)}
-                      placeholder="e.g. Sec 303(2) BNS, Sec 318 BNS & Sec 66D IT Act"
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Investigation Priority:</label>
-                    <select
-                      value={regPriority}
-                      onChange={(e) => setRegPriority(e.target.value)}
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                    >
-                      <option value="High">🔴 High Priority (Immediate Command Response)</option>
-                      <option value="Medium">🟡 Medium Priority (Standard Precinct Investigation)</option>
-                      <option value="Low">⚪ Low Priority (Routine Log Entry)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: COMPLAINANT DETAILS */}
-              {firModalTab === "complainant" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Complainant Full Name:</label>
-                      <input
-                        type="text"
-                        required
-                        value={regComplainantName}
-                        onChange={(e) => setRegComplainantName(e.target.value)}
-                        placeholder="e.g. Ramesh V. Kumar"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Father's / Mother's / Spouse's Name:</label>
-                      <input
-                        type="text"
-                        value={regComplainantRelative}
-                        onChange={(e) => setRegComplainantRelative(e.target.value)}
-                        placeholder="e.g. Venkatachalaiah K."
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Age:</label>
-                      <input
-                        type="number"
-                        value={regComplainantAge}
-                        onChange={(e) => setRegComplainantAge(e.target.value)}
-                        placeholder="e.g. 38"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Gender:</label>
-                      <select
-                        value={regComplainantGender}
-                        onChange={(e) => setRegComplainantGender(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Transgender / Other">Transgender / Other</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Mobile Number:</label>
-                      <input
-                        type="tel"
-                        value={regComplainantMobile}
-                        onChange={(e) => setRegComplainantMobile(e.target.value)}
-                        placeholder="e.g. 9845012345"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Occupation (Optional):</label>
-                      <input
-                        type="text"
-                        value={regComplainantOccupation}
-                        onChange={(e) => setRegComplainantOccupation(e.target.value)}
-                        placeholder="e.g. Bank Manager / Merchant"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Identity Proof Type:</label>
-                      <select
-                        value={regComplainantIdProof}
-                        onChange={(e) => setRegComplainantIdProof(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        <option value="Aadhaar Card">Aadhaar Card</option>
-                        <option value="Voter ID Card">Voter ID Card</option>
-                        <option value="Driving License">Driving License</option>
-                        <option value="Passport">Passport</option>
-                        <option value="PAN Card">PAN Card</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Full Residential Address:</label>
-                    <textarea
-                      rows={2}
-                      value={regComplainantAddress}
-                      onChange={(e) => setRegComplainantAddress(e.target.value)}
-                      placeholder="Enter street, building, area, city, and pin code..."
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded p-2.5 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: INCIDENT & OFFENCE DETAILS */}
-              {firModalTab === "incident" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Date of Incident:</label>
-                      <input
-                        type="date"
-                        value={regIncidentDate}
-                        onChange={(e) => setRegIncidentDate(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Time of Incident:</label>
-                      <input
-                        type="time"
-                        value={regIncidentTime}
-                        onChange={(e) => setRegIncidentTime(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Type of Offence:</label>
-                      <select
-                        value={regMajorHead}
-                        onChange={(e) => setRegMajorHead(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        <option value="Crimes Against Property">Theft / House Burglary</option>
-                        <option value="Cyber Crime">Cyber Crime & Online Fraud</option>
-                        <option value="Economic Offences">Economic Offences & Forgery</option>
-                        <option value="Crimes Against Women">Crimes Against Women & Children</option>
-                        <option value="NDPS Offences">NDPS & Prohibited Narcotics</option>
-                        <option value="Senior Citizen Crimes">Senior Citizen Crimes</option>
-                        <option value="Human Trafficking">Human Trafficking</option>
-                        <option value="Misc IPC Offences">Misc IPC / BNS Offence</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Place of Occurrence (Location Address):</label>
-                    <input
-                      type="text"
-                      required
-                      value={regOccurrencePlace}
-                      onChange={(e) => setRegOccurrencePlace(e.target.value)}
-                      placeholder="e.g. Near Commercial Market Main Gate, Jayanagar 4th Block"
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-sans"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Detailed Description of Incident (What Happened):</label>
-                    <textarea
-                      rows={4}
-                      required
-                      value={regBriefFacts}
-                      onChange={(e) => setRegBriefFacts(e.target.value)}
-                      placeholder="Provide complete narrative of the crime event, weapon brandished, modus operandi, sequence of events..."
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded p-3 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">How Complainant Came to Know About Incident:</label>
-                    <input
-                      type="text"
-                      value={regHowComplainantKnew}
-                      onChange={(e) => setRegHowComplainantKnew(e.target.value)}
-                      placeholder="e.g. Direct Eye Witness / Informed by Guard / CCTV Alert"
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: ACCUSED & WITNESS DETAILS */}
-              {firModalTab === "accused" && (
-                <div className="space-y-4">
-                  <div className="bg-[#111827] border border-[#1e293b] p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">
-                      Accused / Suspect Details (If Known):
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Accused Name:</label>
-                        <input
-                          type="text"
-                          value={regAccusedName}
-                          onChange={(e) => setRegAccusedName(e.target.value)}
-                          placeholder="e.g. Suresh @ Cobra & 2 Unknown Miscreants"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Age & Gender:</label>
-                        <input
-                          type="text"
-                          value={regAccusedAgeGender}
-                          onChange={(e) => setRegAccusedAgeGender(e.target.value)}
-                          placeholder="e.g. Male, ~32 years"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Accused Address:</label>
-                        <input
-                          type="text"
-                          value={regAccusedAddress}
-                          onChange={(e) => setRegAccusedAddress(e.target.value)}
-                          placeholder="e.g. Resident of Sector 4, Kalaburagi"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Relationship with Complainant:</label>
-                        <input
-                          type="text"
-                          value={regAccusedRelationship}
-                          onChange={(e) => setRegAccusedRelationship(e.target.value)}
-                          placeholder="e.g. Ex-Employee / Business Partner / Unknown"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Physical Description & Marks:</label>
-                      <input
-                        type="text"
-                        value={regAccusedPhysicalDesc}
-                        onChange={(e) => setRegAccusedPhysicalDesc(e.target.value)}
-                        placeholder="e.g. Height 5'10, Tattoo on right arm, Black jacket"
-                        className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-[#111827] border border-[#1e293b] p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider block">
-                      Witness Details (If Any):
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Witness Name:</label>
-                        <input
-                          type="text"
-                          value={regWitnessName}
-                          onChange={(e) => setRegWitnessName(e.target.value)}
-                          placeholder="e.g. Manjunath B."
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Contact Number:</label>
-                        <input
-                          type="tel"
-                          value={regWitnessContact}
-                          onChange={(e) => setRegWitnessContact(e.target.value)}
-                          placeholder="e.g. 9886012345"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Witness Address:</label>
-                        <input
-                          type="text"
-                          value={regWitnessAddress}
-                          onChange={(e) => setRegWitnessAddress(e.target.value)}
-                          placeholder="e.g. Shop #12, Main Road"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 5: PROPERTY & EVIDENCE FILES */}
-              {firModalTab === "property" && (
-                <div className="space-y-4">
-                  <div className="bg-[#111827] border border-[#1e293b] p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider block">
-                      Stolen Property & Vehicle Telemetry:
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Stolen or Damaged Items:</label>
-                        <input
-                          type="text"
-                          value={regStolenItems}
-                          onChange={(e) => setRegStolenItems(e.target.value)}
-                          placeholder="e.g. Gold Ornament 24g, Laptop, Cash ₹75,000"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Estimated Total Value (₹):</label>
-                        <input
-                          type="number"
-                          value={regEstimatedValue}
-                          onChange={(e) => setRegEstimatedValue(e.target.value)}
-                          placeholder="e.g. 150000"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Vehicle Details (Reg No, Model, Color):</label>
-                      <input
-                        type="text"
-                        value={regVehicleDetails}
-                        onChange={(e) => setRegVehicleDetails(e.target.value)}
-                        placeholder="e.g. KA-01-MJ-2026, White Hyundai Creta"
-                        className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* EVIDENCE FILE UPLOAD ATTACHMENT */}
-                  <div className="bg-[#111827] border border-blue-500/30 p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                      <Upload size={14} />
-                      Attach Evidence File (CCTV / Document / Photo / Video):
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Evidence Classification:</label>
-                        <select
-                          value={regEvidenceType}
-                          onChange={(e) => setRegEvidenceType(e.target.value)}
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono font-bold"
-                        >
-                          <option value="CCTV / Video Evidence">CCTV / Video Evidence</option>
-                          <option value="Written Complaint & Documents">Written Complaint & Documents</option>
-                          <option value="Physical Photo Snapshot">Physical Photo Snapshot</option>
-                          <option value="Digital Forensic Log">Digital Forensic Log</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Select File Attachment:</label>
-                        <input
-                          type="file"
-                          onChange={(e) => setRegEvidenceFile(e.target.files?.[0] || null)}
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-300 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500 font-mono text-[11px]"
-                        />
-                      </div>
-                    </div>
-
-                    {regEvidenceFile && (
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-2.5 rounded text-xs font-mono flex items-center gap-2">
-                        <CheckCircle size={14} />
-                        <span>Attached File: <strong>{regEvidenceFile.name}</strong> ({(regEvidenceFile.size / 1024).toFixed(1)} KB)</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-[#1e293b] flex justify-between items-center bg-[#0f172a]">
-              <div className="text-[11px] font-mono text-slate-400">
-                Registering as: <span className="text-amber-400 font-bold">{user?.Username} ({user?.Rank || "Head Constable"})</span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsRegisterIncidentModalOpen(false)}
-                  className="bg-[#1e293b] hover:bg-[#334155] text-slate-300 text-xs px-4 py-2 rounded-lg font-mono font-bold transition-colors"
-                >
-                  {t("Cancel", "ರದ್ದುಗೊಳಿಸಿ")}
-                </button>
-                <button
-                  type="submit"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-xs px-6 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2"
-                >
-                  <Plus size={16} />
-                  <span>{t("Submit & File Official FIR", "ಅಧಿಕೃತ ಎಫ್.ಐ.ಆರ್ ನೋಂದಾಯಿಸಿ")}</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      <FirRegistrationModal open={isRegisterIncidentModalOpen} onClose={() => setIsRegisterIncidentModalOpen(false)} onRegistered={handleFirRegistered} />
     </>
   );
 
@@ -964,32 +271,25 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
     // ----------------------------------------------------
     // CASE LIST VIEW
     // ----------------------------------------------------
+    const RISK_BADGE: Record<string, string> = {
+      Severe: "bg-red-500/10 text-red-400 border-red-500/20", High: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+      Medium: "bg-amber-500/10 text-amber-400 border-amber-500/20", Low: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    };
     const columns = [
       { header: t("Case Number", "ಪ್ರಕರಣ ಸಂಖ್ಯೆ"), accessorKey: "CaseNo", render: (r: any) => <span className="text-blue-400 font-bold font-mono">{r.CaseNo}</span> },
       { header: t("Reg Date", "ನೋಂದಾಯಿತ ದಿನಾಂಕ"), accessorKey: "CrimeRegisteredDate" },
-      { header: t("Priority", "ಆದ್ಯತೆ"), accessorKey: "InvestigationPriority", render: (r: any) => {
-          const score = r.AIRiskScore || 0.50;
-          const priorityLabel = (score >= 0.60 || r.GravityOffenceID === 1 || r.InvestigationPriority === "High") 
-            ? "High" 
-            : (score >= 0.30 ? "Medium" : "Low");
-          return (
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border font-bold ${
-              priorityLabel === "High" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-              priorityLabel === "Medium" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
-              "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-            }`}>
-              {priorityLabel === "High" ? "🔴 " : priorityLabel === "Medium" ? "🟡 " : "🟢 "}
-              {translateData(priorityLabel)}
-            </span>
-          );
-        }
-      },
-      { header: t("Severity ID", "ಗಾಂಭೀರ್ಯತೆ ಸೂಚ್ಯಂಕ"), accessorKey: "GravityOffenceID", render: (r: any) => (
-          <span className="font-mono text-slate-300">{t("Level", "ಹಂತ")} {r.GravityOffenceID}</span>
+      { header: t("Status", "ಸ್ಥಿತಿ"), accessorKey: "CaseStatusID", render: (r: any) => <span className="text-slate-300">{translateData(statusName(r.CaseStatusID))}</span> },
+      { header: t("Priority", "ಆದ್ಯತೆ"), accessorKey: "InvestigationPriority", render: (r: any) => (
+          r.InvestigationPriority
+            ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border font-bold ${RISK_BADGE[r.InvestigationPriority] || RISK_BADGE.Low}`}>{translateData(r.InvestigationPriority)}</span>
+            : <span className="text-slate-600">—</span>
         )
       },
-      { header: t("AI Risk Score", "ಎಐ ರಿಸ್ಕ್ ಸ್ಕೋರ್"), accessorKey: "AIRiskScore", render: (r: any) => (
-          <span className="font-mono font-bold text-red-400">{(r.AIRiskScore || 0).toFixed(2)}</span>
+      { header: t("Gravity", "ಗಂಭೀರತೆ"), accessorKey: "GravityOffenceID", render: (r: any) => <span className="font-mono text-slate-300">{gravityName(r.GravityOffenceID)}</span> },
+      { header: t("AI Risk", "ಎಐ ಅಪಾಯ"), accessorKey: "AIRiskScore", render: (r: any) => (
+          r.AIRiskLevel
+            ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border font-bold ${RISK_BADGE[r.AIRiskLevel] || ""}`} title={r.AIRiskScore != null ? `P(High or Severe) = ${r.AIRiskScore.toFixed(2)}` : undefined}>{r.AIRiskLevel}{r.AIRiskScore != null ? ` · ${r.AIRiskScore.toFixed(2)}` : ""}</span>
+            : <span className="text-slate-600" title="Not scored yet">—</span>
         )
       },
       { header: t("Brief Facts", "ಅಪರಾಧ ಸಾರಾಂಶ"), accessorKey: "BriefFacts", render: (r: any) => <p className="truncate max-w-sm">{translateData(r.BriefFacts)}</p> }
@@ -1138,25 +438,34 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* District Filter / Station Scope Lock */}
+            {/* District filter; station-level officers are already restricted by the server to their precinct */}
             {!isConstable ? (
               <select
                 value={districtId}
                 onChange={(e) => { setDistrictId(e.target.value); setPage(1); }}
                 className="bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none font-mono font-bold"
               >
-                <option value="">All Karnataka Districts (31)</option>
-                {Object.entries(karnatakaDistricts).map(([id, name]) => (
-                  <option key={id} value={id}>{name}</option>
+                <option value="">{t("All districts", "ಎಲ್ಲಾ ಜಿಲ್ಲೆಗಳು")} ({reference.districts.length || "…"})</option>
+                {reference.districts.map((d) => (
+                  <option key={d.id} value={d.id}>{translateData(d.name)}</option>
                 ))}
               </select>
             ) : (
               <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-2 rounded text-xs font-mono font-bold">
-                👮 Station Precinct Scope (Restricted to Police Station)
+                👮 {t("Showing the cases in your jurisdiction", "ನಿಮ್ಮ ವ್ಯಾಪ್ತಿಯ ಪ್ರಕರಣಗಳು")}
               </div>
             )}
 
-            {/* Category / Status Filter */}
+            <select
+              value={crimeCategory}
+              onChange={(e) => { setCrimeCategory(e.target.value); setPage(1); }}
+              className="bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none font-mono font-bold"
+            >
+              <option value="">{t("All crime types", "ಎಲ್ಲಾ ಅಪರಾಧ ವಿಧಗಳು")}</option>
+              {reference.crime_heads.map((c) => <option key={c.id} value={c.id}>{translateData(c.name)}</option>)}
+            </select>
+
+            {/* Category filter */}
             <select
               value={riskCategory}
               onChange={(e) => {
@@ -1164,16 +473,14 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                 setRiskCategory(cat);
                 setPage(1);
                 if (cat === "risk") setSortBy("risk_desc");
-                else if (cat === "pending") setStatusId("1");
-                else if (cat === "finished") setStatusId("3");
-                else setStatusId("");
+                else if (sortBy.startsWith("risk")) setSortBy("date_desc");
               }}
               className="bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none font-mono font-bold"
             >
-              <option value="all">📋 All Cases</option>
-              <option value="risk">🛡️ AI High Risk Cases</option>
-              <option value="pending">⏳ Pending Cases</option>
-              <option value="finished">✅ Finished / Cleared Cases</option>
+              <option value="all">📋 {t("All cases", "ಎಲ್ಲಾ ಪ್ರಕರಣಗಳು")}</option>
+              <option value="risk">🛡️ {t("AI high / severe risk", "ಎಐ ಹೆಚ್ಚು / ತೀವ್ರ ಅಪಾಯ")}</option>
+              <option value="pending">⏳ {t("Open cases", "ತೆರೆದಿರುವ ಪ್ರಕರಣಗಳು")}</option>
+              <option value="finished">✅ {t("Closed / disposed", "ಮುಕ್ತಾಯ / ವಿಲೇವಾರಿ")}</option>
             </select>
 
             {/* Sorting Sub-Filter */}
@@ -1261,7 +568,10 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
-              Priority: {caseDetails.InvestigationPriority || "Medium"}
+              Priority: {caseDetails.InvestigationPriority || "not set"}
+            </span>
+            <span className="text-[10px] bg-slate-500/10 border border-slate-500/20 text-slate-300 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
+              Status: {translateData(statusName(caseDetails.CaseStatusID))}
             </span>
             <span className="text-[10px] bg-red-500/10 border border-red-500/20 text-red-400 px-2 py-0.5 rounded font-mono uppercase tracking-wider">
               Sensitivity: {caseDetails.CaseSensitivity || "Standard"}
@@ -1270,7 +580,7 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
           <h1 className="text-xl font-bold tracking-tight text-slate-100 mt-2 flex items-center gap-2">
             Case Details: <span className="font-mono text-blue-400 font-extrabold">{caseDetails.CaseNo}</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Crime incident logs registered under Major Head {caseDetails.CrimeMajorHeadID}</p>
+          <p className="text-xs text-slate-400 mt-1">{translateData(crimeHeadName(caseDetails.CrimeMajorHeadID))} · {gravityName(caseDetails.GravityOffenceID)}</p>
         </div>
 
         <button
@@ -1360,7 +670,7 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                     {accusedData?.map((a: any, idx: number) => (
                       <tr key={idx}>
                         <td className="px-4 py-2.5 font-bold text-slate-100">{a.AccusedName}</td>
-                        <td className="px-4 py-2.5">{a.AgeYear} yrs / {a.GenderID === 1 ? "M" : "F"}</td>
+                        <td className="px-4 py-2.5">{a.AgeYear != null ? `${a.AgeYear} yrs` : "age n/a"} / {genderName(a.GenderID)}</td>
                         <td className="px-4 py-2.5">{a.Occupation || "Unspecified"}</td>
                         <td className="px-4 py-2.5">
                           {a.IsRepeatOffender ? (
@@ -1401,17 +711,17 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                     {victimsData?.map((v: any, idx: number) => (
                       <tr key={idx}>
                         <td className="px-4 py-2.5 font-bold">{v.VictimName}</td>
-                        <td className="px-4 py-2.5">{v.AgeYear} yrs / {v.GenderID === 1 ? "M" : "F"}</td>
+                        <td className="px-4 py-2.5">{v.AgeYear != null ? `${v.AgeYear} yrs` : "age n/a"} / {genderName(v.GenderID)}</td>
                         <td className="px-4 py-2.5 font-mono">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                             v.InjurySeverity?.toLowerCase().includes("fatal") || v.InjurySeverity?.toLowerCase().includes("grievous")
                               ? "bg-red-500/10 text-red-400 border border-red-500/20"
                               : "bg-slate-800 text-slate-300 border border-slate-700"
                           }`}>
-                            {v.InjurySeverity === "Minor" ? "Minor Injury" : (v.InjurySeverity || "No Physical Injury")}
+                            {v.InjurySeverity || "Not recorded"}
                           </span>
                         </td>
-                        <td className="px-4 py-2.5">{v.RelationshipToAccused || "Stranger"}</td>
+                        <td className="px-4 py-2.5">{v.RelationshipToAccused || "Not recorded"}</td>
                       </tr>
                     ))}
                     {(!victimsData || victimsData.length === 0) && (
@@ -1533,9 +843,9 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                   <div key={idx} className="bg-[#111827] border border-[#1e293b] p-4 rounded text-xs">
                     <div className="flex justify-between items-center mb-2 border-b border-[#1e293b] pb-1.5">
                       <span className="font-bold text-blue-400">{w.WitnessName}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">Type: {w.WitnessType || "Fact Witness"}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{w.WitnessType ? `Type: ${w.WitnessType}` : ""}</span>
                     </div>
-                    <p className="text-slate-300 leading-relaxed italic">"{w.StatementText}"</p>
+                    <p className="text-slate-300 leading-relaxed italic">{w.StatementSummary ? `"${w.StatementSummary}"` : "No statement summary recorded."}</p>
                   </div>
                 ))}
                 {(!witnessesData || witnessesData.length === 0) && (
@@ -1550,196 +860,99 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
         {activeSubTab === "ai" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 bg-[#111827] border border-[#1e293b] rounded p-5 flex flex-col items-center justify-center text-center">
-              <Shield className="text-red-500 mb-3" size={48} />
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">
-                AI Threat Risk Score
-              </span>
+              <Shield className={`mb-3 ${aiRiskData?.RiskLevel === "Severe" ? "text-red-500" : aiRiskData?.RiskLevel === "High" ? "text-orange-500" : aiRiskData?.RiskLevel === "Medium" ? "text-amber-400" : "text-emerald-500"}`} size={48} />
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Model risk assessment</span>
               {isRiskLoading ? (
                 <div className="h-10 w-24 bg-slate-800 rounded animate-pulse mt-4"></div>
+              ) : riskError || !aiRiskData ? (
+                <p className="text-xs text-amber-400 mt-4 font-mono">{(riskError as any)?.response?.data?.detail || "The risk model could not score this case."}</p>
               ) : (
                 <>
-                  <span className="text-5xl font-extrabold text-red-500 font-mono mt-4">
-                    {(((aiRiskData?.AIRiskScore !== undefined ? aiRiskData.AIRiskScore : (caseDetails?.AIRiskScore || 0.78))) * 100).toFixed(0)}%
-                  </span>
-                  <span className="text-xs font-bold uppercase text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded mt-2">
-                    {aiRiskData?.RiskLevel || "HIGH RISK"}
-                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-100 bg-slate-700/60 border border-slate-600 px-2 py-0.5 rounded mt-3">{aiRiskData.RiskLevel} risk</span>
+                  <span className="text-4xl font-extrabold text-slate-100 font-mono mt-3">{(aiRiskData.AIRiskScore * 100).toFixed(0)}%</span>
+                  <span className="text-[10px] text-slate-400 mt-1 font-mono">estimated chance of a High or Severe rating</span>
+                  {aiRiskData.ClassProbabilities && (
+                    <div className="w-full mt-4 space-y-1 text-left">
+                      {Object.entries(aiRiskData.ClassProbabilities as Record<string, number>).map(([level, p]) => (
+                        <div key={level} className="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                          <span className="w-14">{level}</span>
+                          <div className="flex-1 h-1.5 bg-slate-800 rounded"><div className="h-1.5 bg-blue-500 rounded" style={{ width: `${p * 100}%` }} /></div>
+                          <span className="w-9 text-right">{(p * 100).toFixed(0)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-slate-500 mt-4 leading-normal">{aiRiskData.Summary}</p>
+                  <p className="text-[10px] text-slate-600 mt-2 leading-normal font-mono">{aiRiskData.ModelVersion}{aiRiskData.ConfidenceMeaning ? ` · ${aiRiskData.ConfidenceMeaning}` : ""}</p>
                 </>
               )}
-              <p className="text-[10px] text-slate-500 mt-4 leading-normal">
-                Computed by Karnataka Police Risk Engine using SHAP classification vectors.
-              </p>
-
-              <button
-                disabled={backfillMutation.isPending}
-                onClick={() => backfillMutation.mutate()}
-                className="mt-6 w-full bg-blue-600/15 hover:bg-blue-600/35 border border-blue-500/30 text-blue-400 rounded py-2 text-[10px] font-bold uppercase tracking-wider transition-colors"
-              >
-                {backfillMutation.isPending ? "Backfilling Vectors..." : "Sync Embedding Space"}
-              </button>
             </div>
 
             <div className="lg:col-span-2">
-              <ExplanationCard
-                factors={
-                  aiRiskData?.TopRiskFactors?.length > 0
-                    ? aiRiskData.TopRiskFactors.map((f: any) => ({
-                        name: f.FeatureName || f.feature || "Crime Feature",
-                        score: f.ImpactScore || f.weight || 0.35,
-                        description: f.Description || f.description || "High impact feature vector",
-                      }))
-                    : [
-                        { name: "GravityOffenceID", score: 0.45, description: "[INC: 45%] High gravity offence classification" },
-                        { name: "ReportingDelayHours", score: 0.30, description: "[INC: 30%] Extended reporting delay" },
-                        { name: "AccusedCount", score: 0.25, description: "[INC: 25%] Multiple accused individuals listed" }
-                      ]
-                }
-              />
+              {aiRiskData?.TopRiskFactors?.length > 0 ? (
+                <ExplanationCard
+                  title="What drove this rating (contribution of each feature to the estimated risk)"
+                  factors={aiRiskData.TopRiskFactors.map((f: any) => ({ name: f.FeatureName, score: f.ImpactScore, description: f.Description }))}
+                />
+              ) : (
+                <div className="bg-[#111827] border border-[#1e293b] rounded p-5 text-xs text-slate-500 font-mono">
+                  {isRiskLoading ? "Computing the explanation…" : "No explanation is available for this case."}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* NETWORK PANEL - CONCISE CASE-SPECIFIC LINKAGE GRAPH */}
+        {/* NETWORK PANEL: the people, vehicles, evidence and station recorded on this FIR (links are direct records) */}
         {activeSubTab === "network" && (() => {
           const nodes: any[] = [];
           const edges: any[] = [];
+          const caseNodeId = `case_${caseId}`;
+          const link = (id: string, source: string, relationship: string, evidenceSource: string) =>
+            edges.push({ id, source, target: caseNodeId, relationship, confidence: 1.0, evidence_source: evidenceSource });
 
-          const caseNodeId = `case_${caseId || 101}`;
-          const caseTitle = caseDetails?.CaseNo || caseDetails?.CrimeNo || `FIR #${caseId || 101}`;
-
-          // 1. Central FIR Case Node
           nodes.push({
-            id: caseNodeId,
-            label: `Case #${caseTitle}`,
-            node_type: "FIR",
-            centrality: 4.5,
-            case_count: 1,
-            risk_score: 0.85,
-            details: caseDetails?.BriefFacts || "Active Case File Telemetry"
+            id: caseNodeId, label: `FIR ${caseDetails.CaseNo}`, node_type: "FIR", centrality: 3, case_count: 1,
+            risk_score: caseDetails.AIRiskScore ?? undefined, details: caseDetails.BriefFacts,
           });
-
-          // 2. Police Station / Precinct Node
-          if (caseDetails?.PoliceStationName) {
-            const psNodeId = `ps_${caseId || 101}`;
+          if (caseDetails.PoliceStationName) {
+            nodes.push({ id: `ps_${caseId}`, label: caseDetails.PoliceStationName, node_type: "PoliceStation", centrality: 2, details: "Registering police station" });
+            edges.push({ id: `e_ps_${caseId}`, source: caseNodeId, target: `ps_${caseId}`, relationship: "REGISTERED_AT", confidence: 1.0, evidence_source: "FIR record" });
+          }
+          (accusedData || []).forEach((acc: any) => {
+            const id = `accused_${acc.AccusedMasterID}`;
             nodes.push({
-              id: psNodeId,
-              label: caseDetails.PoliceStationName,
-              node_type: "PoliceStation",
-              centrality: 2.5
+              id, label: acc.AccusedName || "Accused", node_type: "Person", sub_type: acc.IsRepeatOffender ? "Repeat Offender" : "Accused",
+              centrality: acc.IsRepeatOffender ? 2 : 1, age: acc.AgeYear ?? undefined, occupation: acc.Occupation ?? undefined, address: acc.Address ?? undefined,
+              details: acc.IsRepeatOffender ? "Recorded repeat offender" : "Accused in this FIR",
             });
-            edges.push({
-              id: `e_ps_${caseId}`,
-              source: caseNodeId,
-              target: psNodeId,
-              relationship: "INVESTIGATING_PRECINCT",
-              confidence: 1.0,
-              evidence_source: "KSP Precinct Registry"
-            });
-          }
-
-          // 3. Accused Persons Specific to this Case
-          if (accusedData && accusedData.length > 0) {
-            accusedData.forEach((acc: any, i: number) => {
-              const accNodeId = `accused_${acc.AccusedMasterID || i}`;
-              nodes.push({
-                id: accNodeId,
-                label: `${acc.AccusedName || "Accused"} (${acc.AgeYear || 32}y)`,
-                node_type: "Person",
-                sub_type: acc.IsRepeatOffender ? "Repeat Offender" : "Accused",
-                centrality: acc.IsRepeatOffender ? 4.0 : 3.0,
-                risk_score: acc.IsRepeatOffender ? 0.95 : 0.75,
-                age: acc.AgeYear,
-                occupation: acc.Occupation || "Unspecified",
-                address: acc.Address || "Local Jurisdiction"
-              });
-              edges.push({
-                id: `e_acc_${i}`,
-                source: accNodeId,
-                target: caseNodeId,
-                relationship: acc.IsRepeatOffender ? "REPEAT_ACCUSED_LINK" : "ACCUSED_IN_CASE",
-                confidence: 0.95,
-                evidence_source: "Charge Sheet / FIR Record"
-              });
-            });
-          } else {
-            // Default accused for specific case
-            const accNodeId = `accused_def_${caseId || 101}`;
-            const accName = caseId === 102 ? "Basavaraj @ Cobra" : caseId === 103 ? "Mohammed Imran" : "Primary Accused";
-            nodes.push({
-              id: accNodeId,
-              label: accName,
-              node_type: "Person",
-              sub_type: "Accused",
-              centrality: 3.5,
-              risk_score: 0.85
-            });
-            edges.push({
-              id: `e_acc_def_${caseId}`,
-              source: accNodeId,
-              target: caseNodeId,
-              relationship: "ACCUSED_LINK",
-              confidence: 0.92,
-              evidence_source: "Official FIR Filing"
-            });
-          }
-
-          // 4. Victim Records Specific to this Case
-          if (victimsData && victimsData.length > 0) {
-            victimsData.forEach((vic: any, i: number) => {
-              const vicNodeId = `victim_${vic.VictimMasterID || i}`;
-              nodes.push({
-                id: vicNodeId,
-                label: `Victim: ${vic.VictimName || "Complainant"}`,
-                node_type: "Victim",
-                centrality: 2.2,
-                risk_score: 0.3
-              });
-              edges.push({
-                id: `e_vic_${i}`,
-                source: vicNodeId,
-                target: caseNodeId,
-                relationship: "VICTIM_COMPLAINANT",
-                confidence: 1.0,
-                evidence_source: "Complainant Statement"
-              });
-            });
-          }
-
-          // 5. Evidence Files Specific to this Case
-          if (evidenceData && evidenceData.length > 0) {
-            evidenceData.forEach((ev: any, i: number) => {
-              const evNodeId = `evidence_${ev.EvidenceID || i}`;
-              nodes.push({
-                id: evNodeId,
-                label: `${ev.EvidenceType}: ${ev.FileName || ev.Description?.substring(0, 20) || "File"}`,
-                node_type: "Evidence",
-                centrality: 2.0
-              });
-              edges.push({
-                id: `e_ev_${i}`,
-                source: evNodeId,
-                target: caseNodeId,
-                relationship: "COLLECTED_EVIDENCE",
-                confidence: 0.98,
-                evidence_source: "Seizure Memo"
-              });
-            });
-          }
-
-          const focusedGraph = {
-            nodes,
-            edges,
-            total_nodes: nodes.length,
-            total_edges: edges.length,
-            gang_count: 0
-          };
+            link(`e_${id}`, id, acc.IsRepeatOffender ? "REPEAT_ACCUSED_IN" : "ACCUSED_IN", "FIR record");
+          });
+          (victimsData || []).forEach((vic: any) => {
+            const id = `victim_${vic.VictimMasterID}`;
+            nodes.push({ id, label: `${vic.VictimName || "Victim"} (victim)`, node_type: "Victim", centrality: 1, details: vic.InjurySeverity ? `Injury: ${vic.InjurySeverity}` : "Victim / complainant" });
+            link(`e_${id}`, id, "VICTIM_IN", "FIR record");
+          });
+          (witnessesData || []).forEach((w: any) => {
+            const id = `witness_${w.WitnessMasterID}`;
+            nodes.push({ id, label: `${w.WitnessName} (witness)`, node_type: "Witness", centrality: 1, details: w.StatementSummary || "Witness" });
+            link(`e_${id}`, id, "WITNESS_IN", "Witness record");
+          });
+          (vehiclesData || []).forEach((veh: any) => {
+            const id = `vehicle_${veh.VehicleID}`;
+            nodes.push({ id, label: veh.RegistrationNumber || veh.VehicleType || "Vehicle", node_type: "Vehicle", centrality: 1, registration_no: veh.RegistrationNumber ?? undefined,
+              details: [veh.VehicleType, veh.Make, veh.Model, veh.Color, veh.InvolvementRole].filter(Boolean).join(" · ") || "Vehicle" });
+            link(`e_${id}`, id, veh.InvolvementRole ? `VEHICLE_${String(veh.InvolvementRole).toUpperCase().replace(/\s+/g, "_")}` : "VEHICLE_IN", "Vehicle record");
+          });
+          (evidenceData || []).forEach((ev: any) => {
+            const id = `evidence_${ev.EvidenceID}`;
+            nodes.push({ id, label: ev.EvidenceType || "Evidence", node_type: "Evidence", centrality: 1, details: ev.Description });
+            link(`e_${id}`, id, "COLLECTED_IN", "Evidence record");
+          });
 
           return (
             <div className="h-[500px] border border-[#1e293b] rounded-xl overflow-hidden relative shadow-2xl bg-[#0a0f1d]">
-              <NetworkGraphCanvas
-                graphData={focusedGraph}
-                isLoading={false}
-              />
+              <NetworkGraphCanvas graphData={{ nodes, edges, total_nodes: nodes.length, total_edges: edges.length, gang_count: 0 }} isLoading={false} />
             </div>
           );
         })()}
@@ -1747,51 +960,97 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
         {/* TIMELINE PANEL */}
         {activeSubTab === "timeline" && (
           <div className="space-y-6">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-4 font-mono">
-              Smart Investigation Timeline logs
-            </h3>
-            <div className="relative pl-6 border-l border-blue-500/30 space-y-6 font-sans">
-              <div className="relative">
-                <span className="absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-[#0d1322]"></span>
-                <div className="text-xs">
-                  <span className="font-bold text-slate-200">Incident Occurred</span>
-                  <p className="text-slate-400 mt-1">{new Date(caseDetails.IncidentFromDate).toLocaleString()}</p>
-                </div>
+            {(canUpdateCase || canAnnotate) && (
+              <div className="bg-[#111827] border border-[#1e293b] rounded p-4 space-y-3">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Case actions</h3>
+                {actionError && <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-2.5 rounded text-xs font-mono">{actionError}</div>}
+                {canUpdateCase && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="text-[10px] font-mono text-slate-400 uppercase">
+                      Status
+                      <select value={caseDetails.CaseStatusID} disabled={statusMutation.isPending}
+                        onChange={(e) => statusMutation.mutate(Number(e.target.value))}
+                        className="mt-1 w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-1.5 font-mono normal-case">
+                        {reference.case_statuses.map((st) => <option key={st.id} value={st.id}>{translateData(st.name)}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-mono text-slate-400 uppercase">
+                      Investigation priority
+                      <select value={caseDetails.InvestigationPriority || ""} disabled={priorityMutation.isPending}
+                        onChange={(e) => e.target.value && priorityMutation.mutate(e.target.value)}
+                        className="mt-1 w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-1.5 font-mono normal-case">
+                        {!caseDetails.InvestigationPriority && <option value="">Not set</option>}
+                        {["High", "Medium", "Low"].map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                )}
+                {canAnnotate && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <select value={noteCategory} onChange={(e) => setNoteCategory(e.target.value)}
+                        className="bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-2 py-1.5 font-mono">
+                        {["General Note", "Forensic Progress", "Accused Movement", "Evidence Log", "Case Journal"].map((c) => <option key={c}>{c}</option>)}
+                      </select>
+                      <input value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder="Add a note to the case journal (min. 5 characters)"
+                        className="flex-1 bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-1.5" />
+                      <button disabled={actionNote.trim().length < 5 || noteMutation.isPending} onClick={() => noteMutation.mutate()}
+                        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded font-bold font-mono">Add note</button>
+                    </div>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="relative">
-                <span className="absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-[#0d1322]"></span>
-                <div className="text-xs">
-                  <span className="font-bold text-slate-200">Case Registered (FIR Entry)</span>
-                  <p className="text-slate-400 mt-1">{caseDetails.CrimeRegisteredDate}</p>
-                </div>
+            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">Case chronology</h3>
+            {isTimelineLoading ? (
+              <p className="text-xs text-slate-500 font-mono">Loading…</p>
+            ) : (
+              <div className="relative pl-6 border-l border-blue-500/30 space-y-5 font-sans">
+                {(timelineData?.events ?? []).map((ev: any, idx: number) => {
+                  const colour = ev.kind === "incident" ? "bg-red-500" : ev.kind === "fir" ? "bg-blue-500" : ev.kind === "status" ? "bg-emerald-500" : ev.kind === "evidence" ? "bg-purple-500" : ev.kind === "assignment" ? "bg-amber-500" : "bg-slate-500";
+                  return (
+                    <div key={idx} className="relative">
+                      <span className={`absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full ${colour} border-2 border-[#0d1322]`}></span>
+                      <div className="text-xs">
+                        <span className="font-bold text-slate-200">{translateData(ev.title)}</span>
+                        <span className="ml-2 text-[10px] text-slate-500 font-mono">{new Date(ev.at).toLocaleString()}{ev.actor ? ` · ${ev.actor}` : ""}</span>
+                        {ev.detail && <p className="text-slate-400 mt-1 leading-relaxed">{translateData(ev.detail)}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+                {(timelineData?.events ?? []).length === 0 && <p className="text-xs text-slate-500 font-mono">No dated events recorded.</p>}
               </div>
-
-              <div className="relative">
-                <span className="absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-[#0d1322]"></span>
-                <div className="text-xs">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    Investigator Assigned
-                  </span>
-                  <p className="text-slate-400 mt-1">Lead officer assignment logged in operational database.</p>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* SIMILAR CASES PANEL */}
         {activeSubTab === "similar" && (
           <div className="space-y-6 h-full flex flex-col">
-            <div className="flex justify-between items-center border-b border-[#1e293b] pb-3 mb-2">
+            <div className="flex justify-between items-center border-b border-[#1e293b] pb-3 mb-2 gap-4">
               <div>
                 <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">
-                  Vector Similar Case Matches (pgvector Cosine)
+                  Similar cases by narrative (pgvector cosine search)
                 </h3>
+                {similarCasesData?.SearchedCases != null && (
+                  <p className="text-[10px] text-amber-400/90 mt-0.5 font-mono">
+                    Searching {similarCasesData.SearchedCases.toLocaleString()} of {similarCasesData.TotalCases?.toLocaleString()} FIRs that have been indexed so far.
+                  </p>
+                )}
                 <p className="text-[10px] text-slate-500 mt-0.5 font-sans">
-                  Calculated using sentence transformer embedding models. Select a match to trigger side-by-side analysis.
+                  Cosine similarity between Gemini text embeddings of the case narratives. Select a match to compare it side by side.
                 </p>
+                {embedNote && <p className="text-[10px] text-slate-400 mt-1 font-mono">{embedNote}</p>}
               </div>
+              <button
+                disabled={backfillMutation.isPending}
+                onClick={() => backfillMutation.mutate()}
+                className="flex-shrink-0 bg-blue-600/15 hover:bg-blue-600/35 border border-blue-500/30 text-blue-400 rounded px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+              >
+                {backfillMutation.isPending ? "Indexing…" : "Index more FIRs"}
+              </button>
             </div>
 
             <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1803,24 +1062,11 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                   <div className="text-center py-8 text-xs text-slate-500 font-mono">No similar MO matches found.</div>
                 ) : (
                   similarCasesData.Matches.map((m: any, idx: number) => {
-                    const getSeverityBorder = (r: any) => {
-                      const priority = r.InvestigationPriority;
-                      const gravity = r.GravityOffenceID;
-                      const risk = r.AIRiskScore;
-                      if (gravity === 1 || priority === "High" || (risk && risk >= 0.45)) {
-                        return "border-l-red-500";
-                      }
-                      if (gravity === 2 || priority === "Medium" || (risk && risk >= 0.25)) {
-                        return "border-l-amber-500";
-                      }
-                      return "border-l-emerald-500";
-                    };
-
                     return (
                       <div
                         key={idx}
                         onClick={() => setSelectedCompareCase(m)}
-                        className={`p-3.5 rounded border border-l-4 ${getSeverityBorder(m)} transition-all cursor-pointer flex gap-4 ${
+                        className={`p-3.5 rounded border border-l-4 border-l-blue-500 transition-all cursor-pointer flex gap-4 ${
                           selectedCompareCase === m
                             ? "bg-blue-600/10 border-blue-500/50"
                             : "bg-[#111827] border-[#1e293b] hover:border-slate-700"
@@ -1852,9 +1098,9 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                   <div className="space-y-4 text-xs">
                     {/* Header Similarity Indicator */}
                     <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded text-center">
-                      <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block">Cosine Similarity Confidence</span>
+                      <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 block">Cosine similarity</span>
                       <span className="text-2xl font-black text-blue-400 font-mono mt-1 block">
-                        {((selectedCompareCase.SimilarityScore || 0) * 100).toFixed(1)}% Match
+                        {((selectedCompareCase.SimilarityScore || 0) * 100).toFixed(1)}%
                       </span>
                     </div>
 
@@ -2050,12 +1296,8 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
                   className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
                   required
                 >
-                  <option value="CCTV Footage">📹 CCTV Surveillance Video Footage</option>
-                  <option value="Crime Scene Picture">🖼️ Crime Scene Picture / Snapshot</option>
-                  <option value="Document / Report">📄 Legal Document / FIR / Seizure Memo</option>
-                  <option value="Forensic DNA Report">🧪 Forensic DNA & Lab Sample</option>
-                  <option value="Recovered Weapon">🔪 Recovered Sharp Weapon / Property</option>
-                  <option value="Digital Telemetry">📱 Mobile Call Data Record (CDR)</option>
+                  <option value="" disabled>Select a category</option>
+                  {reference.vocabulary.evidence_type.map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>
               </div>
 
@@ -2235,599 +1477,7 @@ Registering Officer: ${user?.Username || "KSP Officer"} (${user?.Rank || "Office
         </div>
       )}
 
-      {/* Register Incident Toast */}
-      {registerSuccessToast && (
-        <div className="fixed top-5 right-5 bg-emerald-600 text-white font-mono text-xs px-4 py-3 rounded-lg shadow-2xl z-50 flex items-center gap-2 animate-in slide-in-from-top duration-200">
-          <CheckCircle size={18} />
-          <span>{registerSuccessToast}</span>
-        </div>
-      )}
-
-      {/* BNS COMPLIANT FIR REGISTRATION MODAL */}
-      {isRegisterIncidentModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <form
-            onSubmit={handleRegisterIncidentSubmit}
-            className="bg-[#0b1324] border border-emerald-500/40 rounded-2xl max-w-3xl w-full flex flex-col shadow-[0_0_50px_rgba(16,185,129,0.15)] animate-in fade-in zoom-in-95 duration-150 select-none font-sans overflow-hidden max-h-[90vh]"
-          >
-            {/* Modal Header */}
-            <div className="p-5 border-b border-[#1e293b] flex justify-between items-center bg-[#0f172a]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold font-mono">
-                  FIR
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-wider flex items-center gap-2">
-                    <span>{t("Official BNS FIR Registration Portal", "ಅಧಿಕೃತ ಬಿ.ಎನ್.ಎಸ್ ಎಫ್.ಐ.ಆರ್ ಅಪರಾಧ ನೋಂದಣಿ")}</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-mono">
-                    Bharatiya Nyaya Sanhita (BNS) & Criminal Procedure Registration Telemetry
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRegisterIncidentModalOpen(false)}
-                className="text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-[#1e293b] transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Sub-Tab Selector */}
-            <div className="flex bg-[#0f172a] border-b border-[#1e293b] px-4 pt-2 gap-2 overflow-x-auto font-mono text-xs">
-              <button
-                type="button"
-                onClick={() => setFirModalTab("police")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "police"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>🏛️ Police & Law</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("complainant")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "complainant"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>👤 Complainant</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("incident")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "incident"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>📍 Incident Details</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("accused")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "accused"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>👤 Accused & Witness</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFirModalTab("property")}
-                className={`px-3 py-2 border-b-2 font-bold transition-all flex items-center gap-1.5 ${
-                  firModalTab === "property"
-                    ? "border-emerald-400 text-emerald-400 bg-emerald-500/5"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <span>🚗 Property & Files</span>
-              </button>
-            </div>
-
-            {/* Modal Body Form Content */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs font-sans flex-1 max-h-[60vh]">
-              {/* TAB 1: POLICE & LAW DETAILS */}
-              {firModalTab === "police" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Assigned FIR Number:</label>
-                      <input
-                        type="text"
-                        required
-                        value={regFirNo}
-                        onChange={(e) => setRegFirNo(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-amber-400 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Registering Officer Name & Rank:</label>
-                      <input
-                        type="text"
-                        disabled
-                        value={`${user?.Username || "Officer"} (${user?.Rank || "Head Constable"})`}
-                        className="w-full bg-[#0f172a] border border-[#1e293b] text-slate-300 text-xs rounded px-3 py-2 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Jurisdiction District:</label>
-                      <select
-                        value={regDistrictId}
-                        onChange={(e) => setRegDistrictId(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        {Object.entries(karnatakaDistricts).map(([dId, dName]) => (
-                          <option key={dId} value={dId}>{translateData(dName)}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Police Station Precinct:</label>
-                      <input
-                        type="text"
-                        required
-                        value={regStationName}
-                        onChange={(e) => setRegStationName(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Sections of Law Applied (BNS / Special Laws):</label>
-                    <input
-                      type="text"
-                      required
-                      value={regSectionsOfLaw}
-                      onChange={(e) => setRegSectionsOfLaw(e.target.value)}
-                      placeholder="e.g. Sec 303(2) BNS, Sec 318 BNS & Sec 66D IT Act"
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Investigation Priority:</label>
-                    <select
-                      value={regPriority}
-                      onChange={(e) => setRegPriority(e.target.value)}
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                    >
-                      <option value="High">🔴 High Priority (Immediate Command Response)</option>
-                      <option value="Medium">🟡 Medium Priority (Standard Precinct Investigation)</option>
-                      <option value="Low">⚪ Low Priority (Routine Log Entry)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: COMPLAINANT DETAILS */}
-              {firModalTab === "complainant" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Complainant Full Name:</label>
-                      <input
-                        type="text"
-                        required
-                        value={regComplainantName}
-                        onChange={(e) => setRegComplainantName(e.target.value)}
-                        placeholder="e.g. Ramesh V. Kumar"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Father's / Mother's / Spouse's Name:</label>
-                      <input
-                        type="text"
-                        value={regComplainantRelative}
-                        onChange={(e) => setRegComplainantRelative(e.target.value)}
-                        placeholder="e.g. Venkatachalaiah K."
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Age:</label>
-                      <input
-                        type="number"
-                        value={regComplainantAge}
-                        onChange={(e) => setRegComplainantAge(e.target.value)}
-                        placeholder="e.g. 38"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Gender:</label>
-                      <select
-                        value={regComplainantGender}
-                        onChange={(e) => setRegComplainantGender(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Transgender / Other">Transgender / Other</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Mobile Number:</label>
-                      <input
-                        type="tel"
-                        value={regComplainantMobile}
-                        onChange={(e) => setRegComplainantMobile(e.target.value)}
-                        placeholder="e.g. 9845012345"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Occupation (Optional):</label>
-                      <input
-                        type="text"
-                        value={regComplainantOccupation}
-                        onChange={(e) => setRegComplainantOccupation(e.target.value)}
-                        placeholder="e.g. Bank Manager / Merchant"
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Identity Proof Type:</label>
-                      <select
-                        value={regComplainantIdProof}
-                        onChange={(e) => setRegComplainantIdProof(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        <option value="Aadhaar Card">Aadhaar Card</option>
-                        <option value="Voter ID Card">Voter ID Card</option>
-                        <option value="Driving License">Driving License</option>
-                        <option value="Passport">Passport</option>
-                        <option value="PAN Card">PAN Card</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Full Residential Address:</label>
-                    <textarea
-                      rows={2}
-                      value={regComplainantAddress}
-                      onChange={(e) => setRegComplainantAddress(e.target.value)}
-                      placeholder="Enter street, building, area, city, and pin code..."
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded p-2.5 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: INCIDENT & OFFENCE DETAILS */}
-              {firModalTab === "incident" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Date of Incident:</label>
-                      <input
-                        type="date"
-                        value={regIncidentDate}
-                        onChange={(e) => setRegIncidentDate(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Time of Incident:</label>
-                      <input
-                        type="time"
-                        value={regIncidentTime}
-                        onChange={(e) => setRegIncidentTime(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Type of Offence:</label>
-                      <select
-                        value={regMajorHead}
-                        onChange={(e) => setRegMajorHead(e.target.value)}
-                        className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                      >
-                        <option value="Crimes Against Property">Theft / House Burglary</option>
-                        <option value="Cyber Crime">Cyber Crime & Online Fraud</option>
-                        <option value="Economic Offences">Economic Offences & Forgery</option>
-                        <option value="Crimes Against Women">Crimes Against Women & Children</option>
-                        <option value="NDPS Offences">NDPS & Prohibited Narcotics</option>
-                        <option value="Senior Citizen Crimes">Senior Citizen Crimes</option>
-                        <option value="Human Trafficking">Human Trafficking</option>
-                        <option value="Misc IPC Offences">Misc IPC / BNS Offence</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Place of Occurrence (Location Address):</label>
-                    <input
-                      type="text"
-                      required
-                      value={regOccurrencePlace}
-                      onChange={(e) => setRegOccurrencePlace(e.target.value)}
-                      placeholder="e.g. Near Commercial Market Main Gate, Jayanagar 4th Block"
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-sans"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">Detailed Description of Incident (What Happened):</label>
-                    <textarea
-                      rows={4}
-                      required
-                      value={regBriefFacts}
-                      onChange={(e) => setRegBriefFacts(e.target.value)}
-                      placeholder="Provide complete narrative of the crime event, weapon brandished, modus operandi, sequence of events..."
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded p-3 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-slate-400 font-mono block mb-1">How Complainant Came to Know About Incident:</label>
-                    <input
-                      type="text"
-                      value={regHowComplainantKnew}
-                      onChange={(e) => setRegHowComplainantKnew(e.target.value)}
-                      placeholder="e.g. Direct Eye Witness / Informed by Guard / CCTV Alert"
-                      className="w-full bg-[#111827] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: ACCUSED & WITNESS DETAILS */}
-              {firModalTab === "accused" && (
-                <div className="space-y-4">
-                  <div className="bg-[#111827] border border-[#1e293b] p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block">
-                      Accused / Suspect Details (If Known):
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Accused Name:</label>
-                        <input
-                          type="text"
-                          value={regAccusedName}
-                          onChange={(e) => setRegAccusedName(e.target.value)}
-                          placeholder="e.g. Suresh @ Cobra & 2 Unknown Miscreants"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Age & Gender:</label>
-                        <input
-                          type="text"
-                          value={regAccusedAgeGender}
-                          onChange={(e) => setRegAccusedAgeGender(e.target.value)}
-                          placeholder="e.g. Male, ~32 years"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Accused Address:</label>
-                        <input
-                          type="text"
-                          value={regAccusedAddress}
-                          onChange={(e) => setRegAccusedAddress(e.target.value)}
-                          placeholder="e.g. Resident of Sector 4, Kalaburagi"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Relationship with Complainant:</label>
-                        <input
-                          type="text"
-                          value={regAccusedRelationship}
-                          onChange={(e) => setRegAccusedRelationship(e.target.value)}
-                          placeholder="e.g. Ex-Employee / Business Partner / Unknown"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Physical Description & Marks:</label>
-                      <input
-                        type="text"
-                        value={regAccusedPhysicalDesc}
-                        onChange={(e) => setRegAccusedPhysicalDesc(e.target.value)}
-                        placeholder="e.g. Height 5'10, Tattoo on right arm, Black jacket"
-                        className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-[#111827] border border-[#1e293b] p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider block">
-                      Witness Details (If Any):
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Witness Name:</label>
-                        <input
-                          type="text"
-                          value={regWitnessName}
-                          onChange={(e) => setRegWitnessName(e.target.value)}
-                          placeholder="e.g. Manjunath B."
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Contact Number:</label>
-                        <input
-                          type="tel"
-                          value={regWitnessContact}
-                          onChange={(e) => setRegWitnessContact(e.target.value)}
-                          placeholder="e.g. 9886012345"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Witness Address:</label>
-                        <input
-                          type="text"
-                          value={regWitnessAddress}
-                          onChange={(e) => setRegWitnessAddress(e.target.value)}
-                          placeholder="e.g. Shop #12, Main Road"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 5: PROPERTY & EVIDENCE FILES */}
-              {firModalTab === "property" && (
-                <div className="space-y-4">
-                  <div className="bg-[#111827] border border-[#1e293b] p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider block">
-                      Stolen Property & Vehicle Telemetry:
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Stolen or Damaged Items:</label>
-                        <input
-                          type="text"
-                          value={regStolenItems}
-                          onChange={(e) => setRegStolenItems(e.target.value)}
-                          placeholder="e.g. Gold Ornament 24g, Laptop, Cash ₹75,000"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Estimated Total Value (₹):</label>
-                        <input
-                          type="number"
-                          value={regEstimatedValue}
-                          onChange={(e) => setRegEstimatedValue(e.target.value)}
-                          placeholder="e.g. 150000"
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono font-bold"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-slate-400 font-mono block mb-1">Vehicle Details (Reg No, Model, Color):</label>
-                      <input
-                        type="text"
-                        value={regVehicleDetails}
-                        onChange={(e) => setRegVehicleDetails(e.target.value)}
-                        placeholder="e.g. KA-01-MJ-2026, White Hyundai Creta"
-                        className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-emerald-500 font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  {/* EVIDENCE FILE UPLOAD ATTACHMENT */}
-                  <div className="bg-[#111827] border border-blue-500/30 p-4 rounded-xl space-y-3">
-                    <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                      <Upload size={14} />
-                      Attach Evidence File (CCTV / Document / Photo / Video):
-                    </span>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Evidence Classification:</label>
-                        <select
-                          value={regEvidenceType}
-                          onChange={(e) => setRegEvidenceType(e.target.value)}
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono font-bold"
-                        >
-                          <option value="CCTV / Video Evidence">CCTV / Video Evidence</option>
-                          <option value="Written Complaint & Documents">Written Complaint & Documents</option>
-                          <option value="Physical Photo Snapshot">Physical Photo Snapshot</option>
-                          <option value="Digital Forensic Log">Digital Forensic Log</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-slate-400 font-mono block mb-1">Select File Attachment:</label>
-                        <input
-                          type="file"
-                          onChange={(e) => setRegEvidenceFile(e.target.files?.[0] || null)}
-                          className="w-full bg-[#0f172a] border border-[#334155] text-slate-300 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500 font-mono text-[11px]"
-                        />
-                      </div>
-                    </div>
-
-                    {regEvidenceFile && (
-                      <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-2.5 rounded text-xs font-mono flex items-center gap-2">
-                        <CheckCircle size={14} />
-                        <span>Attached File: <strong>{regEvidenceFile.name}</strong> ({(regEvidenceFile.size / 1024).toFixed(1)} KB)</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-[#1e293b] flex justify-between items-center bg-[#0f172a]">
-              <div className="text-[11px] font-mono text-slate-400">
-                Registering as: <span className="text-amber-400 font-bold">{user?.Username} ({user?.Rank || "Head Constable"})</span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsRegisterIncidentModalOpen(false)}
-                  className="bg-[#1e293b] hover:bg-[#334155] text-slate-300 text-xs px-4 py-2 rounded-lg font-mono font-bold transition-colors"
-                >
-                  {t("Cancel", "ರದ್ದುಗೊಳಿಸಿ")}
-                </button>
-                <button
-                  type="submit"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-xs px-6 py-2.5 rounded-lg font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2"
-                >
-                  <Plus size={16} />
-                  <span>{t("Submit & File Official FIR", "ಅಧಿಕೃತ ಎಫ್.ಐ.ಆರ್ ನೋಂದಾಯಿಸಿ")}</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      )}
+      {renderRegisterFirModal()}
     </div>
   );
 }

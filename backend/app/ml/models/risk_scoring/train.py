@@ -1,86 +1,83 @@
-"""
-Training script for the risk scoring model against labeled case data.
+"""Train the case risk model on the dataset's real RiskLabel (CrimeCases_AI.csv).
+
+    python scripts/train_models.py
+
+Every metric stored in the artifact comes from 5-fold stratified cross-validation on the labelled data.
 """
 
-import os
-from pathlib import Path
-import pandas as pd
+from __future__ import annotations
+
+import platform
+from datetime import datetime, timezone
+
 import numpy as np
+import sklearn
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, f1_score, log_loss, precision_recall_fscore_support, roc_auc_score
+from sklearn.model_selection import StratifiedKFold, cross_val_predict
+
+from app.ml.features import RISK_FEATURES, load_seed_tables, seed_feature_frame, seed_risk_labels
+
+RISK_CLASSES = ["Low", "Medium", "High", "Severe"]
+HIGH_CLASS_INDEXES = (2, 3)  # the score is P(High) + P(Severe)
+MODEL_VERSION = "risk-rf-v4-real-labels"
 
 
-def generate_synthetic_crime_data(path: str, num_records: int = 1000):
-    """Generate high-quality synthetic crime data to seed the risk model training."""
-    np.random.seed(42)
-    gravity_options = ["Heinous", "Non-Heinous"]
-    gravity = np.random.choice(gravity_options, size=num_records, p=[0.25, 0.75])
-
-    delay = np.random.exponential(scale=24.0, size=num_records)
-    age = np.random.randint(5, 730, size=num_records)
-    num_accused = np.random.poisson(lam=1.5, size=num_records) + 1
-    num_evidence = np.random.poisson(lam=3.0, size=num_records)
-
-    raw_score = (
-        (gravity == "Heinous").astype(int) * 0.40 +
-        (delay > 48.0).astype(int) * 0.15 +
-        (age > 180).astype(int) * 0.15 +
-        (num_accused >= 3).astype(int) * 0.15 +
-        (num_evidence <= 1).astype(int) * 0.15
-    )
-
-    risk_labels = []
-    for score in raw_score:
-        if score >= 0.60:
-            risk_labels.append("High")
-        elif score >= 0.30:
-            risk_labels.append("Medium")
-        else:
-            risk_labels.append("Low")
-
-    df = pd.DataFrame({
-        "GravityOffenceName": gravity,
-        "ReportingDelayHours": delay,
-        "CaseAgeDays": age,
-        "NumberOfAccused": num_accused,
-        "NumberOfEvidenceItems": num_evidence,
-        "RiskLabel": risk_labels
-    })
-
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
-    print(f"Generated {num_records} synthetic crime records at {path}.")
+def _cv_metrics(y: np.ndarray, proba: np.ndarray) -> dict:
+    pred = proba.argmax(axis=1)
+    precision, recall, f1, support = precision_recall_fscore_support(y, pred, labels=range(len(RISK_CLASSES)), zero_division=0)
+    high_probability = proba[:, list(HIGH_CLASS_INDEXES)].sum(axis=1)
+    return {
+        "accuracy": round(float(accuracy_score(y, pred)), 4),
+        "macro_f1": round(float(f1_score(y, pred, average="macro")), 4),
+        "log_loss": round(float(log_loss(y, proba, labels=range(len(RISK_CLASSES)))), 4),
+        "high_or_severe_auc": round(float(roc_auc_score((y >= HIGH_CLASS_INDEXES[0]).astype(int), high_probability)), 4),
+        "per_class": {
+            name: {"precision": round(float(precision[i]), 4), "recall": round(float(recall[i]), 4),
+                   "f1": round(float(f1[i]), 4), "support": int(support[i])}
+            for i, name in enumerate(RISK_CLASSES)
+        },
+    }
 
 
-def train_risk_model(data_path: str) -> RandomForestClassifier:
-    """Train and return the RandomForestClassifier on the training dataset."""
-    if not os.path.exists(data_path):
-        generate_synthetic_crime_data(data_path)
+def train_risk_artifact(seed_dir: str) -> dict:
+    tables = load_seed_tables(seed_dir)
+    features = seed_feature_frame(tables)
+    labels = seed_risk_labels(tables).reindex(features.index)
+    y = labels.map({name: i for i, name in enumerate(RISK_CLASSES)}).astype(int).to_numpy()
 
-    data = pd.read_csv(data_path)
+    candidates = {
+        "class_weight=balanced": {"class_weight": "balanced"},
+        "class_weight=None": {"class_weight": None},
+    }
+    folds = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    results = {}
+    for name, options in candidates.items():
+        model = RandomForestClassifier(n_estimators=300, min_samples_leaf=3, random_state=42, n_jobs=-1, **options)
+        proba = cross_val_predict(model, features, y, cv=folds, method="predict_proba")
+        results[name] = _cv_metrics(y, proba)
 
-    data["GravityOffenceName"] = data["GravityOffenceName"].fillna("Non-Heinous")
-    data["ReportingDelayHours"] = pd.to_numeric(data["ReportingDelayHours"], errors="coerce").fillna(0.0)
-    data["CaseAgeDays"] = pd.to_numeric(data["CaseAgeDays"], errors="coerce").fillna(0.0)
-    data["NumberOfAccused"] = pd.to_numeric(data["NumberOfAccused"], errors="coerce").fillna(0.0)
-    data["NumberOfEvidenceItems"] = pd.to_numeric(data["NumberOfEvidenceItems"], errors="coerce").fillna(0.0)
-    data["RiskLabel"] = data["RiskLabel"].fillna("Medium")
+    chosen = max(results, key=lambda key: results[key]["macro_f1"])
+    final = RandomForestClassifier(n_estimators=300, min_samples_leaf=3, random_state=42, n_jobs=1, **candidates[chosen])
+    final.fit(features, y)
 
-    features = pd.DataFrame({
-        "GravityOffenceID": data["GravityOffenceName"].eq("Heinous").astype(int),
-        "ReportingDelayHours": data["ReportingDelayHours"],
-        "CaseAgeDays": data["CaseAgeDays"],
-        "NumberOfAccused": data["NumberOfAccused"],
-        "NumberOfEvidenceItems": data["NumberOfEvidenceItems"]
-    })
-
-    target = data["RiskLabel"].map({"Low": 0, "Medium": 1, "High": 2, "Severe": 2}).fillna(1).astype(int)
-
-    model = RandomForestClassifier(
-        n_estimators=160,
-        max_depth=8,
-        min_samples_leaf=3,
-        random_state=42,
-        class_weight="balanced"
-    )
-    model.fit(features, target)
-    return model
+    majority_share = float(np.bincount(y).max() / len(y))
+    reference = {
+        name: {"median": float(features[name].median()), "p25": float(features[name].quantile(0.25)),
+               "p75": float(features[name].quantile(0.75)), "p90": float(features[name].quantile(0.90))}
+        for name in RISK_FEATURES
+    }
+    return {
+        "model": final,
+        "features": RISK_FEATURES,
+        "classes": RISK_CLASSES,
+        "version": MODEL_VERSION,
+        "trained_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "trained_on": {"source": "CrimeCases_AI.csv RiskLabel", "rows": int(len(y)),
+                       "class_counts": {name: int((y == i).sum()) for i, name in enumerate(RISK_CLASSES)}},
+        "library": {"scikit-learn": sklearn.__version__, "python": platform.python_version()},
+        "chosen_config": chosen,
+        "cross_validation": {"folds": 5, "candidates": results, "chosen": results[chosen],
+                             "majority_class_accuracy": round(majority_share, 4)},
+        "reference": reference,
+    }

@@ -9,6 +9,9 @@ export interface User {
   RoleID: number;
   Rank?: string;
   GrantedScope?: string;
+  Permissions?: string[];
+  ScopeLevel?: string;
+  ScopeDescription?: string;
   IsActive: boolean;
   role?: {
     RoleID: number;
@@ -21,7 +24,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<any>;
+  login: (username: string, password: string) => Promise<{ user: User } & Record<string, any>>;
   logout: () => void;
 }
 
@@ -81,7 +84,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const profile = await authService.getMe();
       setUser(profile);
       setIsLoading(false);
-      return data;
+      return { ...data, user: profile as User };
     } catch (err) {
       setIsLoading(false);
       throw err;

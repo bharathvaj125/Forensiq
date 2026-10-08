@@ -6,6 +6,10 @@ from app.models.user import User
 from app.crud import criminal_relationship_crud
 from app.services import audit_service
 
+# An officer-recorded link is a lead until verified: half weight when pending, full when confirmed, none when disputed.
+STATUS_CONFIDENCE = {"Pending": 0.5, "Confirmed": 1.0, "Disputed": 0.0}
+
+
 def establish_suspect_link(
     db: Session,
     source_person_id: int,
@@ -26,7 +30,7 @@ def establish_suspect_link(
         "SourcePersonID": source_person_id,
         "TargetPersonID": target_person_id,
         "RelationshipType": rel_type,
-        "ConfidenceScore": 1.0,
+        "ConfidenceScore": STATUS_CONFIDENCE["Pending"],
         "CreatedBy": current_user.UserID,
         "CreatedAt": datetime.now(timezone.utc),
         "Status": "Pending",
@@ -74,6 +78,7 @@ def verify_suspect_link(
     
     update_data = {
         "Status": verify_status,
+        "ConfidenceScore": STATUS_CONFIDENCE[verify_status],
         "VerifiedBy": current_user.UserID,
         "VerifiedDate": datetime.now(timezone.utc)
     }

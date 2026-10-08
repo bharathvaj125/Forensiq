@@ -1,102 +1,106 @@
-"""Dataset-trained, explainable risk scoring for the Phase 4 API."""
+"""Case risk scoring with the dataset-trained RandomForest (see train.py).
+
+score  = estimated probability that a case is rated High or Severe in the dataset's labelling
+level  = most probable class: Low / Medium / High / Severe
+"""
+
+from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
+
+import joblib
+import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
 
-from app.core.config import settings
-from app.ml.models.risk_scoring.train import train_risk_model
-from app.ml.models.risk_scoring.explain import (
-    explain_prediction_local,
-    get_confidence_meaning,
-    get_investigator_insights
-)
+from app.ml.models.risk_scoring.explain import explain_case, global_importance
+from app.ml.models.risk_scoring.train import HIGH_CLASS_INDEXES
 
-FEATURES = [
-    "GravityOffenceID", "ReportingDelayHours", "CaseAgeDays",
-    "NumberOfAccused", "NumberOfEvidenceItems",
-]
+ARTIFACT_PATH = Path(__file__).parents[2] / "saved_models" / "risk_scoring_rf.joblib"
+
+PRIORITY_BY_LEVEL = {"Low": "Low", "Medium": "Medium", "High": "High", "Severe": "High"}
 
 
 @lru_cache(maxsize=1)
-def _model() -> RandomForestClassifier:
-    """Load serialized risk scoring model. Fail-fast if absent."""
-    import joblib
-    from pathlib import Path
-    model_path = Path(__file__).parents[2] / "saved_models" / "risk_scoring_rf.joblib"
-    if not model_path.exists():
+def load_artifact() -> dict:
+    if not ARTIFACT_PATH.exists():
         raise FileNotFoundError(
-            f"Required ML artifact 'risk_scoring_rf.joblib' is missing from {model_path.parent}. "
-            f"Run 'python train_and_save_all_models.py' before deploying to Catalyst AppSail."
+            f"Risk model artifact missing at {ARTIFACT_PATH}. Train it with: python scripts/train_models.py"
         )
-    return joblib.load(model_path)
+    artifact = joblib.load(ARTIFACT_PATH)
+    if not isinstance(artifact, dict) or "model" not in artifact:
+        raise RuntimeError("Risk model artifact is in an outdated format. Retrain with: python scripts/train_models.py")
+    return artifact
 
 
-def predict_risk(payload: dict) -> dict:
-    """Predict calibrated risk, confidence level, and local explainability values."""
-    model = _model()
+def model_version() -> str:
+    return load_artifact()["version"]
 
-    feat_dict = {
-        "GravityOffenceID": int(int(payload.get("gravity_offence_id", 0)) == 1),
-        "ReportingDelayHours": max(0.0, float(payload.get("reporting_delay_hours", 0))),
-        "CaseAgeDays": max(0.0, float(payload.get("case_age_days", 0))),
-        "NumberOfAccused": max(0, int(payload.get("number_of_accused", 0))),
-        "NumberOfEvidenceItems": max(0, int(payload.get("number_of_evidence_items", 0))),
+
+def model_card() -> dict:
+    artifact = load_artifact()
+    return {
+        "version": artifact["version"],
+        "trained_at": artifact["trained_at"],
+        "trained_on": artifact["trained_on"],
+        "cross_validation": artifact["cross_validation"]["chosen"],
+        "majority_class_accuracy": artifact["cross_validation"]["majority_class_accuracy"],
+        "feature_importance": global_importance(artifact),
     }
 
-    features_df = pd.DataFrame([feat_dict])
-    probabilities = model.predict_proba(features_df[FEATURES])[0]
 
-    # Weighted expected severity: classes are 0=Low, 1=Medium, 2=High/Severe,
-    # so this yields a continuous 0-1 score rather than a single class probability.
-    # Cast to a native float - psycopg2 can't adapt numpy scalar types for Postgres writes.
-    score = float((probabilities[1] * 0.5) + (probabilities[2] * 1.0)) if len(probabilities) >= 3 else float(probabilities[-1])
+def score_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Vectorised scoring. Returns score, level, confidence and the four class probabilities per row."""
+    artifact = load_artifact()
+    model = artifact["model"]
+    raw = model.predict_proba(frame[artifact["features"]].astype(float))
+    proba = np.zeros((len(frame), len(artifact["classes"])))
+    for column, label in enumerate(model.classes_):
+        proba[:, int(label)] = raw[:, column]
 
-    # Percentile-calibrated risk score levels based on dataset distribution
-    # (Distribution: Mean ~0.15, 75th percentile ~0.34, Max ~0.52)
-    if score >= 0.45:
-        level = "Critical"
-    elif score >= 0.25:
-        level = "High"
-    elif score >= 0.10:
-        level = "Medium"
-    else:
-        level = "Low"
+    result = pd.DataFrame(proba, index=frame.index, columns=[f"p_{name}" for name in artifact["classes"]])
+    result["score"] = proba[:, list(HIGH_CLASS_INDEXES)].sum(axis=1)
+    result["level"] = [artifact["classes"][i] for i in proba.argmax(axis=1)]
+    result["confidence"] = proba.max(axis=1)
+    return result
 
-    # Prediction Confidence (probability of the predicted class)
-    pred_class = int(model.predict(features_df[FEATURES])[0])
-    confidence = float(probabilities[pred_class])
 
-    confidence_meaning = get_confidence_meaning(confidence)
+def predict_risk(row: dict, value_labels: dict | None = None) -> dict:
+    """Score one case from its feature row and explain the score."""
+    artifact = load_artifact()
+    scored = score_frame(pd.DataFrame([row]))
+    entry = scored.iloc[0]
+    explanation = explain_case(artifact, row, value_labels)
 
-    # Compute Tree-based SHAP contributions and local summary
-    explanation = explain_prediction_local(model, feat_dict)
-    
-    # Dual-mapped factor schema: supports both old backend keys & new XAI keys
-    top_factors = []
-    for f in explanation["factors"]:
-        top_factors.append({
+    level = entry["level"]
+    cv = artifact["cross_validation"]["chosen"]
+    top = explanation["factors"][:3]
+    drivers = "; ".join(f"{f['feature']} ({f['contribution'] * 100:+.1f} pts)" for f in top)
+    top_factors = [
+        {
             "feature_name": f["feature"],
             "impact_score": f["contribution"],
             "feature": f["feature"],
             "contribution": f["contribution"],
             "percentage": f["percentage"],
             "direction": f["direction"],
-            "description": f"[{f['direction'].upper()}: {f['percentage']}%] {f['description']}"
-        })
-
-    # Include additional dynamic helper insights
-    insights = get_investigator_insights(feat_dict)
-    summary_text = explanation["summary"]
-    if insights:
-        summary_text += " Insights: " + " ".join(insights)
-
+            "description": f["description"],
+        }
+        for f in explanation["factors"]
+    ]
     return {
-        "score": round(score, 4),
+        "score": round(float(entry["score"]), 4),
         "risk_level": level,
-        "model_version": "phase4-risk-rf-v3",
-        "confidence": round(confidence, 4),
-        "confidence_meaning": confidence_meaning,
-        "summary": summary_text,
+        "priority": PRIORITY_BY_LEVEL[level],
+        "model_version": artifact["version"],
+        "confidence": round(float(entry["confidence"]), 4),
+        "confidence_meaning": (
+            f"The model gives '{level}' a {entry['confidence']:.0%} probability. Across 5-fold cross-validation on "
+            f"{artifact['trained_on']['rows']} labelled cases it was right {cv['accuracy']:.0%} of the time "
+            f"(always guessing the most common class would be right {artifact['cross_validation']['majority_class_accuracy']:.0%})."
+        ),
+        "summary": f"Estimated {entry['score']:.0%} chance of a High or Severe rating (most likely class: {level}). Main drivers: {drivers}.",
+        "class_probabilities": {name: round(float(entry[f"p_{name}"]), 4) for name in artifact["classes"]},
+        "baseline_probability": explanation["baseline_probability"],
         "top_factors": top_factors,
     }

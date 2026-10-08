@@ -46,7 +46,7 @@ class XAIExplanation(BaseModel):
     title: str
     prediction: str
     why_explanation: str
-    confidence: float
+    confidence: Optional[float] = None  # only set where a measured accuracy exists (e.g. a forecast backtest)
     supporting_stats: List[str]
     data_sources: str
 
@@ -62,7 +62,11 @@ class PredictiveDashboardResponse(BaseModel):
     high_risk_hotspot_count: int
     patrol_squads_recommended: int
     early_warnings_active: int
-    backlog_workload_index: float
+    backlog_workload_index: float  # percentage of the analysed FIRs that are still open
+    open_cases: int = 0
+    peak_window: Optional[str] = None  # busiest 6-hour block, e.g. "12:00 - 18:00 hrs"
+    peak_window_share: Optional[float] = None
+    peak_shift: Optional[str] = None
     hourly_distribution: List[HourlyPoint]
     dow_distribution: List[DayOfWeekPoint]
     monthly_trend: List[MonthlyTrendPoint]
@@ -70,7 +74,11 @@ class PredictiveDashboardResponse(BaseModel):
     station_rankings: List[StationWorkloadPoint]
     category_rankings: List[CategoryTrendPoint]
     xai_explanations: List[XAIExplanation]
-    model_version: str = "ksp-xai-predictive-v3"
+    as_of_date: Optional[str] = None
+    future_dated_cases_excluded: int = 0
+    forecast_trend: Optional[str] = None
+    forecast_backtest_accuracy: Optional[float] = None
+    model_version: str = "predictive-analytics-v2"
 
 
 class HotspotDetail(BaseModel):
@@ -92,7 +100,7 @@ class HotspotRankingResponse(BaseModel):
 
     total_hotspots: int
     hotspots: List[HotspotDetail]
-    model_version: str = "ksp-kde-hotspot-v3"
+    model_version: str = "kde-hotspot-v2"
 
 
 class ResourceRecommendation(BaseModel):
@@ -107,6 +115,8 @@ class PatrolStrategyResponse(BaseModel):
     recommended_officers: int
     recommended_cars: int
     recommended_bikes: int
+    officers_per_unit: int = 0
+    hotspots_considered: int = 0
     suggested_shift: str
     suggested_timing: str
     priority_level: str  # CRITICAL, HIGH, MEDIUM
@@ -119,7 +129,7 @@ class EarlyWarningAlert(BaseModel):
     alert_id: str
     alert_type: str
     title: str
-    confidence: float
+    confidence: Optional[float] = None  # 1 - p-value for statistical spikes; None for tallies
     risk_level: str  # Critical, High, Medium
     evidence: str
     reason: str

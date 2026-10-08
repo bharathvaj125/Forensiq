@@ -1,202 +1,96 @@
+"""Per-case explanation of the risk model by decision-path attribution (Saabas method).
+
+For each tree in the forest the path a case takes from root to leaf is walked, and the change in the
+tree's estimated probability of a High/Severe rating at every split is credited to the feature that
+split on. Contributions are averaged over the forest, so that
+
+    bias + sum(contributions) == the forest's predicted probability of High/Severe.
+
+This is a transparent path-based attribution, not SHAP / Shapley values.
 """
-Explainable AI (XAI) engine utilizing custom tree-based decision path analysis.
-"""
+
+from __future__ import annotations
 
 import numpy as np
 
+from app.ml.features import FEATURE_LABELS, WEEKDAYS
 
-class TreeExplainer:
-    """
-    High-performance in-memory TreeExplainer that extracts split-level
-    probability contributions for Random Forest predictions.
-    """
 
-    def __init__(self, model):
+class PathExplainer:
+    def __init__(self, model, feature_names: list[str], target_classes: tuple[int, ...]):
         self.model = model
-        self.feature_names = ["GravityOffenceID", "ReportingDelayHours", "CaseAgeDays", "NumberOfAccused", "NumberOfEvidenceItems"]
+        self.feature_names = feature_names
+        self.target_classes = list(target_classes)
+        self._node_probabilities = []
+        for estimator in model.estimators_:
+            values = estimator.tree_.value[:, 0, :]
+            totals = values.sum(axis=1)
+            totals[totals == 0] = 1.0
+            self._node_probabilities.append(values[:, self.target_classes].sum(axis=1) / totals)
 
-    def explain(self, features_dict: dict) -> dict[str, float]:
-        """Compute exact local feature contributions for the High Risk class."""
-        target_class = 2  # Index for "High" Risk label
-        contributions = {name: 0.0 for name in self.feature_names}
-
-        # Format sample matched to the feature indices
-        sample = [
-            float(features_dict.get("GravityOffenceID", 0)),
-            float(features_dict.get("ReportingDelayHours", 0.0)),
-            float(features_dict.get("CaseAgeDays", 0.0)),
-            float(features_dict.get("NumberOfAccused", 0)),
-            float(features_dict.get("NumberOfEvidenceItems", 0))
-        ]
-
-        for tree in self.model.estimators_:
-            # Retrieve decision path
-            path = tree.decision_path(np.array([sample])).toarray()[0]
-            node_indicator = np.where(path == 1)[0]
-
-            left_children = tree.tree_.children_left
-            right_children = tree.tree_.children_right
-            features = tree.tree_.feature
-            values = tree.tree_.value
-
-            # Pre-compute probabilities of target class in each node
-            node_probs = []
-            for val in values:
-                total = np.sum(val[0])
-                prob = val[0][target_class] / total if total > 0 else 0.0
-                node_probs.append(prob)
-
-            # Accumulate splits contributions
-            for i in range(len(node_indicator) - 1):
-                node = node_indicator[i]
-                next_node = node_indicator[i + 1]
-                feat_idx = features[node]
-
-                if feat_idx >= 0:
-                    feat_name = self.feature_names[feat_idx]
-                    diff = node_probs[next_node] - node_probs[node]
-                    contributions[feat_name] += diff
-
-        # Average over all tree estimators
-        num_trees = len(self.model.estimators_)
-        for name in contributions:
-            contributions[name] /= num_trees
-
-        return contributions
+    def explain(self, row: np.ndarray) -> tuple[float, dict[str, float]]:
+        contributions = np.zeros(len(self.feature_names))
+        bias = 0.0
+        sample = np.asarray([row], dtype=float)
+        for estimator, node_probability in zip(self.model.estimators_, self._node_probabilities):
+            path = estimator.decision_path(sample).indices
+            bias += node_probability[path[0]]
+            split_features = estimator.tree_.feature
+            for parent, child in zip(path[:-1], path[1:]):
+                contributions[split_features[parent]] += node_probability[child] - node_probability[parent]
+        n_trees = len(self.model.estimators_)
+        return bias / n_trees, {name: float(value / n_trees) for name, value in zip(self.feature_names, contributions)}
 
 
-def get_confidence_meaning(confidence: float) -> str:
-    """Generate investigator-friendly explanation of the model's confidence."""
-    percentage = int(confidence * 100)
-    if percentage >= 90:
-        return f"The model has very high confidence ({percentage}%) because similar historical crime patterns strongly match this case."
-    elif percentage >= 70:
-        return f"The model has high confidence ({percentage}%) backed by consistent historical indicators."
-    elif percentage >= 50:
-        return f"The model has moderate confidence ({percentage}%); patterns show minor variance."
-    else:
-        return f"The model has low confidence ({percentage}%) due to mixed features or lack of historical precedents."
+def _value_text(name: str, value: float, value_labels: dict[str, dict[int, str]]) -> str:
+    if name in ("IsHeinous", "HasRepeatAccused"):
+        return "Yes" if value >= 1 else "No"
+    if name == "IncidentWeekday":
+        return WEEKDAYS[int(value)] if 0 <= int(value) < 7 else "unknown"
+    if name == "IncidentHour":
+        return f"{int(value):02d}:00" if value >= 0 else "unknown"
+    if name in value_labels:
+        return value_labels[name].get(int(value), f"#{int(value)}")
+    return f"{value:.4g}"  # four significant figures: 0.0240899 hours reads as 0.02409
 
 
-def get_investigator_insights(features: dict) -> list[str]:
-    """Generate heuristics-based helper insights to assist law enforcement officers."""
-    insights = []
-    
-    delay = float(features.get("ReportingDelayHours", 0.0))
-    if delay > 48.0:
-        insights.append(f"High reporting delay ({round(delay, 1)} hours) increased investigation complexity.")
-        
-    accused = int(features.get("NumberOfAccused", 0))
-    if accused >= 3:
-        insights.append(f"Multiple accused ({accused} persons) historically correlate with organized crime.")
-        
-    evidence = int(features.get("NumberOfEvidenceItems", 0))
-    if evidence >= 4:
-        insights.append(f"Existing evidence ({evidence} items) lowers overall operational risk.")
-    elif evidence <= 1:
-        insights.append("Low evidence count indicates urgent need for evidentiary search.")
-        
-    age = float(features.get("CaseAgeDays", 0.0))
-    if age > 180.0:
-        insights.append(f"Prolonged case age ({int(age)} days) indicates potential investigative bottlenecks.")
-        
-    return insights
+def describe_factor(name: str, value: float, contribution: float, reference: dict, value_labels: dict) -> str:
+    label = FEATURE_LABELS.get(name, name)
+    points = abs(contribution) * 100.0
+    verb = "raises" if contribution > 0 else "lowers"
+    text = f"{label}: {_value_text(name, value, value_labels)} {verb} the estimated chance of a High/Severe rating by {points:.1f} percentage points"
+    typical = reference.get(name, {}).get("median")
+    if typical is not None and name not in ("IsHeinous", "HasRepeatAccused", "IncidentWeekday", "IncidentHour") and name not in value_labels:
+        text += f" (typical case: {typical:.4g})"
+    return text + "."
 
 
-def _get_feature_description(name: str, score: float, features: dict) -> tuple[str, str]:
-    val = float(features.get(name, 0.0))
-    direction = "increase" if score >= 0.0 else "decrease"
+def explain_case(artifact: dict, row: dict, value_labels: dict | None = None) -> dict:
+    from app.ml.models.risk_scoring.train import HIGH_CLASS_INDEXES
 
-    if name == "GravityOffenceID":
-        if val >= 1:
-            desc = "Serious (Heinous) offence classification significantly increases operational risk."
-        else:
-            desc = "Non-heinous offence classification reduces case severity."
-    elif name == "ReportingDelayHours":
-        if val > 24.0:
-            desc = f"Delayed reporting ({round(val, 1)} hours) increases evidentiary decay risk."
-        else:
-            desc = f"Rapid incident reporting ({round(val, 1)} hours) preserves evidentiary integrity."
-    elif name == "CaseAgeDays":
-        if val > 90.0:
-            desc = f"Prolonged case age ({int(val)} days) increases risk of unresolved period."
-        else:
-            desc = f"Fresh case age ({int(val)} days) maintains active investigative momentum."
-    elif name == "NumberOfAccused":
-        if val >= 2:
-            desc = f"Multiple accused entities ({int(val)} persons) increase operational complexity."
-        else:
-            desc = f"Single/zero accused entity ({int(val)}) simplifies investigation scope."
-    elif name == "NumberOfEvidenceItems":
-        if val <= 1:
-            desc = f"Low evidence count ({int(val)} items) creates verification risk."
-        else:
-            desc = f"Substantial evidence base ({int(val)} items) supports case verification."
-    else:
-        desc = f"{name} factor value ({val}) impacts overall risk classification."
+    value_labels = value_labels or {}
+    explainer = PathExplainer(artifact["model"], artifact["features"], HIGH_CLASS_INDEXES)
+    vector = np.asarray([row[name] for name in artifact["features"]], dtype=float)
+    bias, contributions = explainer.explain(vector)
 
-    return direction, desc
-
-
-def explain_prediction_local(model, features: dict) -> dict:
-    """Generate detailed local explainability details using TreeExplainer."""
-    explainer = TreeExplainer(model)
-    shap_contribs = explainer.explain(features)
-
-    abs_sum = sum(abs(v) for v in shap_contribs.values())
-    if abs_sum == 0.0:
-        abs_sum = 1.0
-
+    total = sum(abs(v) for v in contributions.values()) or 1.0
     factors = []
-    for name, score in shap_contribs.items():
-        percentage = round((abs(score) / abs_sum) * 100.0, 2)
-        direction, desc = _get_feature_description(name, score, features)
-
+    for name, contribution in contributions.items():
         factors.append({
             "feature": name,
-            "contribution": round(score, 4),
-            "percentage": percentage,
-            "direction": direction,
-            "description": desc
+            "contribution": round(contribution, 4),
+            "percentage": round(abs(contribution) / total * 100.0, 2),
+            "direction": "increase" if contribution > 0 else "decrease",
+            "description": describe_factor(name, row[name], contribution, artifact["reference"], value_labels),
         })
-
-    # Sort factors by absolute impact descending
-    factors.sort(key=lambda x: abs(x["contribution"]), reverse=True)
-
-    # Generate local summary
-    top_pos = [f["feature"] for f in factors if f["direction"] == "increase"][:2]
-    summary_parts = []
-    if top_pos:
-        summary_parts.append(f"risk elevation is primarily driven by {', '.join(top_pos)}")
-    else:
-        summary_parts.append("no major risk elevation factors observed")
-        
-    summary = f"This case is evaluated with these factors: " + ", and ".join(summary_parts) + "."
-
-    return {
-        "factors": factors,
-        "summary": summary
-    }
+    factors.sort(key=lambda item: abs(item["contribution"]), reverse=True)
+    return {"baseline_probability": round(bias, 4), "factors": factors}
 
 
-def get_global_explainability(model) -> dict:
-    """Generate model-level global explainability statistics for dashboards."""
-    feature_names = ["GravityOffenceID", "ReportingDelayHours", "CaseAgeDays", "NumberOfAccused", "NumberOfEvidenceItems"]
-    importances = model.feature_importances_
-
-    ranking = []
-    for name, weight in zip(feature_names, importances):
-        ranking.append({
-            "feature_name": name,
-            "global_importance": round(float(weight), 4),
-            "average_contribution": round(float(weight * 0.5), 4)  # Global surrogate average contribution
-        })
-
-    # Sort by importance descending
-    ranking.sort(key=lambda x: x["global_importance"], reverse=True)
-
-    return {
-        "model_type": "RandomForestClassifier",
-        "total_features": len(feature_names),
-        "ranking": ranking
-    }
+def global_importance(artifact: dict) -> list[dict]:
+    importances = artifact["model"].feature_importances_
+    ranking = [
+        {"feature_name": name, "label": FEATURE_LABELS.get(name, name), "global_importance": round(float(weight), 4)}
+        for name, weight in zip(artifact["features"], importances)
+    ]
+    return sorted(ranking, key=lambda item: item["global_importance"], reverse=True)

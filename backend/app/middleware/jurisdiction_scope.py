@@ -6,6 +6,10 @@ from app.models.police_station import PoliceStation
 from app.models.user_jurisdiction import UserJurisdiction
 from app.models.officer import Officer
 
+# Roles whose holders see every case (senior investigative / oversight roles).
+STATEWIDE_ROLES = ("Admin", "SCRB_Officer", "SHO")
+
+
 def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class=CaseMaster) -> Query:
     """
     Enforces row-level geographic scoping.
@@ -14,7 +18,7 @@ def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class
     - Fallback defaults to the user's own officer assigned PoliceStationID and DistrictID.
     """
     # Allow full statewide case visibility for Senior Investigative Officer roles (Inspector, SP, DGP, Admin)
-    if user.role and user.role.RoleName in ["Admin", "SCRB_Officer", "SHO"]:
+    if user.role and user.role.RoleName in STATEWIDE_ROLES:
         return query
 
     # Handle ExternalAgencyOfficer CollaborationAccess
@@ -34,9 +38,8 @@ def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class
                 for acc in access_records:
                     if acc.AccessScopeLevel == "State":
                         return query
-                    elif acc.AccessScopeLevel == "District":
-                        dist_id = acc.DistrictID or 5
-                        subquery = db.query(PoliceStation.UnitID).filter(PoliceStation.DistrictID == dist_id).subquery()
+                    elif acc.AccessScopeLevel == "District" and acc.DistrictID:
+                        subquery = db.query(PoliceStation.UnitID).filter(PoliceStation.DistrictID == acc.DistrictID).subquery()
                         filters.append(model_class.PoliceStationID.in_(subquery))
                     elif acc.AccessScopeLevel == "Station" and acc.PoliceStationID:
                         filters.append(model_class.PoliceStationID == acc.PoliceStationID)
@@ -46,8 +49,8 @@ def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class
                 if filters:
                     return query.filter(or_(*filters))
 
-        # Default fallback: allow read access to demo cases so officer view is never blank
-        return query
+        # An external officer sees only what an administrator has granted; with no grant they see nothing.
+        return query.filter(False)
 
     # Load explicit override scopes for the user
     jurisdictions = db.query(UserJurisdiction).filter(UserJurisdiction.UserID == user.UserID).all()
@@ -94,3 +97,27 @@ def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class
         filters.append(model_class.CaseMasterID.in_(assignment_subquery))
 
     return query.filter(or_(*filters))
+
+
+def allowed_station_ids(db: Session, user: User) -> set[int] | None:
+    """Police stations whose cases the user may register or manage; None means every station."""
+    if user.role and user.role.RoleName in STATEWIDE_ROLES:
+        return None
+    if user.role and user.role.RoleName == "ExternalAgencyOfficer":
+        return set()
+    stations: set[int] = set()
+    districts: set[int] = set()
+    for j in db.query(UserJurisdiction).filter(UserJurisdiction.UserID == user.UserID).all():
+        if j.UnitID:
+            stations.add(j.UnitID)
+        elif j.DistrictID:
+            districts.add(j.DistrictID)
+    if not stations and not districts and user.OfficerID:
+        officer = db.query(Officer).filter(Officer.OfficerID == user.OfficerID).first()
+        if officer and officer.PoliceStationID:
+            stations.add(officer.PoliceStationID)
+        elif officer and officer.DistrictID:
+            districts.add(officer.DistrictID)
+    if districts:
+        stations |= {unit for (unit,) in db.query(PoliceStation.UnitID).filter(PoliceStation.DistrictID.in_(districts)).all()}
+    return stations

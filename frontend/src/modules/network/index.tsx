@@ -2,6 +2,7 @@ import { useState } from "react";
 import NetworkGraphCanvas from "../../components/graph/NetworkGraphCanvas";
 import { useQuery } from "@tanstack/react-query";
 import { networkService } from "../../services/networkService";
+import { useReferenceOptions } from "../../services/referenceService";
 import {
   Users,
   Filter,
@@ -10,44 +11,11 @@ import {
   Calendar,
 } from "lucide-react";
 
-const KARNATAKA_DISTRICTS = [
-  { id: 1, name: "Bagalkot" },
-  { id: 2, name: "Ballari (Bellary)" },
-  { id: 3, name: "Belagavi (Belgaum)" },
-  { id: 4, name: "Bengaluru City" },
-  { id: 5, name: "Bengaluru Rural" },
-  { id: 6, name: "Bidar" },
-  { id: 7, name: "Chamarajanagar" },
-  { id: 8, name: "Chikkaballapura" },
-  { id: 9, name: "Chikkamagaluru" },
-  { id: 10, name: "Chitradurga" },
-  { id: 11, name: "Dakshina Kannada (Mangaluru)" },
-  { id: 12, name: "Davanagere" },
-  { id: 13, name: "Dharwad (Hubballi)" },
-  { id: 14, name: "Gadag" },
-  { id: 15, name: "Hassan" },
-  { id: 16, name: "Haveri" },
-  { id: 17, name: "Kalaburagi (Gulbarga)" },
-  { id: 18, name: "Kodagu (Madikeri)" },
-  { id: 19, name: "Kolar" },
-  { id: 20, name: "Koppal" },
-  { id: 21, name: "Mandya" },
-  { id: 22, name: "Mysuru (Mysore)" },
-  { id: 23, name: "Raichur" },
-  { id: 24, name: "Ramanagara" },
-  { id: 25, name: "Shivamogga (Shimoga)" },
-  { id: 26, name: "Tumakuru (Tumkur)" },
-  { id: 27, name: "Udupi" },
-  { id: 28, name: "Uttara Kannada (Karwar)" },
-  { id: 29, name: "Vijayanagara" },
-  { id: 30, name: "Vijayapura (Bijapur)" },
-  { id: 31, name: "Yadgir" },
-];
-
 import { useLanguage } from "../../app/providers/LanguageContext";
 
 export default function NetworkModule() {
   const { translateData } = useLanguage();
+  const reference = useReferenceOptions();
   const [districtId, setDistrictId] = useState<number | undefined>(undefined);
   const [crimeCategory, setCrimeCategory] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
@@ -114,11 +82,11 @@ export default function NetworkModule() {
           <div className="flex items-center gap-2">
             <Shield className="text-blue-500" size={18} />
             <h1 className="text-base font-bold tracking-tight text-slate-100 font-mono uppercase">
-              KSP Criminal Intelligence Link Analysis
+              Criminal Intelligence Link Analysis
             </h1>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5 font-sans">
-            Enterprise dynamic network traversal over PostgreSQL FIR records, co-accused syndicates, weapons, and assets.
+            Accused, FIRs, stations, vehicles and evidence linked through the case records; communities are found by graph analysis.
           </p>
         </div>
 
@@ -190,10 +158,10 @@ export default function NetworkModule() {
                 onChange={(e) => setDistrictId(e.target.value ? Number(e.target.value) : undefined)}
                 className="w-full bg-[#151c2e] border border-[#1e293b] text-slate-200 text-xs p-2 rounded focus:outline-none focus:border-blue-500 font-mono"
               >
-                <option value="">All 31 Districts (Statewide)</option>
-                {KARNATAKA_DISTRICTS.map((d) => (
+                <option value="">All {reference.districts.length || ""} districts (statewide)</option>
+                {reference.districts.map((d) => (
                   <option key={d.id} value={d.id}>
-                    {d.name}
+                    {translateData(d.name)}
                   </option>
                 ))}
               </select>
@@ -207,13 +175,12 @@ export default function NetworkModule() {
                 onChange={(e) => setCrimeCategory(e.target.value)}
                 className="w-full bg-[#151c2e] border border-[#1e293b] text-slate-200 text-xs p-2 rounded focus:outline-none focus:border-blue-500 font-mono"
               >
-                <option value="">All Major Crime Heads</option>
-                <option value="burglary">Night Burglary & House Breaking</option>
-                <option value="theft">Vehicle Theft & Property Offence</option>
-                <option value="cyber">Cyber Financial Extortion</option>
-                <option value="assault">Armed Robbery & Violent Assault</option>
-                <option value="women">Crimes Against Women & Harassment</option>
-                <option value="narcotics">NDPS & Illegal Contraband</option>
+                <option value="">All crime categories</option>
+                {reference.crime_heads.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {translateData(c.name)}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -273,11 +240,11 @@ export default function NetworkModule() {
               <div className="flex items-center gap-1.5">
                 <Users className="text-amber-400" size={15} />
                 <h3 className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">
-                  Inferred Gang Syndicates
+                  Linked offender networks
                 </h3>
               </div>
               <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
-                Louvain AI
+                {gangData?.ModelVersion ?? "…"}
               </span>
             </div>
 
@@ -288,16 +255,19 @@ export default function NetworkModule() {
                 {communities.map((g: any, idx: number) => (
                   <div key={idx} className="bg-[#151c2e] border border-[#1e293b] p-2.5 rounded text-xs leading-relaxed">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-amber-300 font-mono">Syndicate Ring #{idx + 1}</span>
-                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[9px] font-mono">
-                        {(g.Confidence * 100).toFixed(0)}% Conf
+                      <span className="font-bold text-amber-300 font-mono">Network #{idx + 1}{g.LeaderName ? ` · ${translateData(g.LeaderName)}` : ""}</span>
+                      <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[9px] font-mono" title="Mean strength of the links inside the network">
+                        link strength {(g.Confidence * 100).toFixed(0)}%
                       </span>
                     </div>
                     <p className="text-slate-300 text-[10px] italic">"{translateData(g.Explanation)}"</p>
                     <div className="mt-1.5 text-[10px] text-slate-400 font-mono flex justify-between items-center">
-                      <span>Members: {g.MemberPersonIDs?.length || 0} suspects</span>
-                      <span className="text-blue-400 text-[9px]">High Co-offending</span>
+                      <span>Members: {g.Size ?? g.MemberPersonIDs?.length ?? 0}{g.CaseCount != null ? ` · ${g.CaseCount} FIRs` : ""}</span>
+                      {g.Density != null && <span className="text-blue-400 text-[9px]">density {(g.Density * 100).toFixed(0)}%</span>}
                     </div>
+                    {g.RecordedGangs?.length > 0 && (
+                      <div className="mt-1 text-[9px] text-slate-500 font-mono">Registry: {g.RecordedGangs.join(", ")}</div>
+                    )}
                   </div>
                 ))}
               </div>

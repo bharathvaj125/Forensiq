@@ -1,19 +1,58 @@
+"""Predictive intelligence: dashboard, hotspot rankings, patrol strategy and early warnings.
+
+Every figure is computed from case records through app.services.analytics. When there is nothing to
+report the response says so (empty lists, zeros) - nothing is filled in with illustrative values."""
+
+from __future__ import annotations
+
 import math
-from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
+from datetime import date
+from typing import Optional
+
+import pandas as pd
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract, or_, and_
 
-from app.middleware.jurisdiction_scope import apply_jurisdiction_filter
-from app.models.case_master import CaseMaster
-from app.models.accused import Accused
-from app.models.evidence import Evidence
-from app.models.vehicle import Vehicle
-from app.models.police_station import PoliceStation
-from app.models.district import District
-from app.models.crime_type import CrimeType
 from app.models.user import User
+from app.services import analytics, reference_data
 
+OFFICERS_PER_PATROL_UNIT = 2  # staffing assumption for the patrol plan (stated in the plan's reasoning)
+DASHBOARD_ROWS = 8
+PRESET_DAYS = {"24h": 1, "7d": 7, "1m": 30, "3m": 90, "1y": 365}
+
+# Specialist units suggested for a crime category, matched on words in the crime-type name.
+SPECIALIST_UNITS = [
+    ("cyber", "Cyber Crime Cell"), ("women", "Women Safety Patrol"), ("narcotic", "Anti-Narcotics Squad"),
+    ("children", "Child Protection Unit"), ("trafficking", "Anti-Human-Trafficking Unit"), ("economic", "Economic Offences liaison"),
+    ("traffic", "Traffic Enforcement Unit"), ("property", "Night Beat Patrol"), ("body", "Rapid Response Unit"),
+    ("public order", "Crowd & Public Order Unit"), ("state", "Intelligence Wing liaison"),
+]
+
+
+def _unit_for(head_name: str) -> str:
+    lowered = head_name.lower()
+    return next((unit for keyword, unit in SPECIALIST_UNITS if keyword in lowered), "Investigation support team")
+
+
+def _scoped_frame(db: Session, user: User, **filters) -> tuple[pd.DataFrame, date, int]:
+    as_of = analytics.as_of_date(db)
+    frame = analytics.load_cases(db, user, **filters)
+    future = int((frame["registered"] > pd.Timestamp(as_of)).sum())
+    return frame[frame["registered"] <= pd.Timestamp(as_of)].copy(), as_of, future
+
+
+def _percent_change(recent: int, previous: int) -> float:
+    return round((recent - previous) / max(previous, 1) * 100.0, 1)
+
+
+def _trend_text(recent: int, previous: int) -> str:
+    """Up/down only when the difference exceeds two standard deviations of a Poisson difference."""
+    change = _percent_change(recent, previous)
+    if abs(recent - previous) <= 2.0 * math.sqrt(recent + previous):
+        return f"➡️ Stable ({change:+.0f}%)"
+    return f"⬆️ Increasing ({change:+.0f}%)" if recent > previous else f"⬇️ Decreasing ({change:+.0f}%)"
+
+
+# --------------------------------------------------------------------------------------- dashboard
 
 def get_predictive_dashboard(
     db: Session,
@@ -25,643 +64,295 @@ def get_predictive_dashboard(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ) -> dict:
-    """
-    Computes dynamic predictive analytics, trend forecasts, diurnal shift distributions, and Explainable AI (XAI) factors.
-    All data is derived strictly from PostgreSQL case records.
-    """
-    # 1. Build Base Case Query with jurisdiction and filters
-    query = db.query(CaseMaster)
-    query = apply_jurisdiction_filter(query, db, current_user)
+    frame, as_of, future = _scoped_frame(db, current_user, district_id=district_id, station_id=station_id,
+                                         crime_category=crime_category, start_date=start_date, end_date=end_date)
+    if date_preset in PRESET_DAYS:
+        frame = analytics.in_window(frame, as_of, PRESET_DAYS[date_preset])
 
-    if district_id is not None and isinstance(district_id, int):
-        ps_subquery = db.query(PoliceStation.UnitID).filter(PoliceStation.DistrictID == district_id).subquery()
-        query = query.filter(CaseMaster.PoliceStationID.in_(ps_subquery))
+    crime_names = reference_data.crime_head_names(db)
+    station_names = reference_data.station_names(db)
+    district_names = reference_data.district_names(db)
+    groups = reference_data.status_groups(db)
+    total = len(frame)
 
-    if station_id is not None and isinstance(station_id, int):
-        query = query.filter(CaseMaster.PoliceStationID == station_id)
+    hourly = analytics.hourly_counts(frame)
+    top_hours = sorted(range(24), key=lambda h: -hourly[h])[:3] if sum(hourly) else []
+    hourly_distribution = [{"hour": h, "count": hourly[h], "peak_label": "Peak hour" if h in top_hours else None} for h in range(24)]
 
-    if crime_category:
-        ckey = crime_category.lower()
-        if ckey == "burglary":
-            query = query.filter(or_(CaseMaster.BriefFacts.ilike("%burgla%"), CaseMaster.BriefFacts.ilike("%house%"), CaseMaster.CrimeMajorHeadID == 2))
-        elif ckey == "theft":
-            query = query.filter(or_(CaseMaster.BriefFacts.ilike("%theft%"), CaseMaster.BriefFacts.ilike("%vehicle%"), CaseMaster.CrimeMajorHeadID == 2))
-        elif ckey == "cyber":
-            query = query.filter(or_(CaseMaster.BriefFacts.ilike("%cyber%"), CaseMaster.BriefFacts.ilike("%bank%"), CaseMaster.CrimeMajorHeadID == 7))
-        elif ckey == "assault":
-            query = query.filter(or_(CaseMaster.BriefFacts.ilike("%assault%"), CaseMaster.BriefFacts.ilike("%robbery%"), CaseMaster.CrimeMajorHeadID == 1))
-        elif ckey == "women":
-            query = query.filter(or_(CaseMaster.BriefFacts.ilike("%dowry%"), CaseMaster.BriefFacts.ilike("%molest%"), CaseMaster.CrimeMajorHeadID == 3))
-        elif ckey == "narcotics":
-            query = query.filter(or_(CaseMaster.BriefFacts.ilike("%ganja%"), CaseMaster.BriefFacts.ilike("%ndps%"), CaseMaster.CrimeMajorHeadID == 8))
+    weekday = analytics.weekday_counts(frame)
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    dow_total = sum(weekday) or 1
+    dow_distribution = [{"dow_index": i, "day_name": day_names[i], "count": weekday[i], "pct": round(weekday[i] / dow_total * 100, 1)} for i in range(7)]
 
-    # Apply date preset or explicit date range
-    now = datetime.now()
-    if date_preset == "24h":
-        query = query.filter(CaseMaster.CrimeRegisteredDate >= now - timedelta(days=1))
-    elif date_preset == "7d":
-        query = query.filter(CaseMaster.CrimeRegisteredDate >= now - timedelta(days=7))
-    elif date_preset == "1m":
-        query = query.filter(CaseMaster.CrimeRegisteredDate >= now - timedelta(days=30))
-    elif date_preset == "3m":
-        query = query.filter(CaseMaster.CrimeRegisteredDate >= now - timedelta(days=90))
-    elif date_preset == "1y":
-        query = query.filter(CaseMaster.CrimeRegisteredDate >= now - timedelta(days=365))
+    forecast = analytics.forecast_next_period(frame, as_of)
+    monthly = frame.groupby(frame["registered"].dt.strftime("%Y-%m")).size().sort_index()
+    monthly_trend = [{"year_month": month, "historical_count": int(count), "forecast_count": None, "data_type": "Historical"} for month, count in monthly.items()]
+    if monthly_trend and monthly_trend[-1]["year_month"] == as_of.strftime("%Y-%m") and as_of != (pd.Timestamp(as_of) + pd.offsets.MonthEnd(0)).date():
+        monthly_trend[-1]["year_month"] += f" (to {as_of.day})"  # a partial month would otherwise look like a collapse in registrations
+    if forecast["predicted"] is not None:
+        next_month = (pd.Timestamp(as_of) + pd.Timedelta(days=30)).strftime("%Y-%m")
+        monthly_trend.append({"year_month": f"{next_month} (Forecast)", "historical_count": 0, "forecast_count": forecast["predicted"], "data_type": "Predicted Forecast"})
+    recent_actual = forecast["recent_actual"]
+    growth = _percent_change(forecast["predicted"], recent_actual) if forecast["predicted"] is not None else 0.0
 
-    if start_date:
-        try:
-            sd = datetime.fromisoformat(start_date)
-            query = query.filter(CaseMaster.CrimeRegisteredDate >= sd)
-        except ValueError:
-            pass
-    if end_date:
-        try:
-            ed = datetime.fromisoformat(end_date)
-            query = query.filter(CaseMaster.CrimeRegisteredDate <= ed)
-        except ValueError:
-            pass
+    # Districts: recent 30 days vs the 30 days before, ranked by volume; risk level is relative to the other districts shown.
+    district_rows = []
+    if not frame.empty:
+        recent = analytics.in_window(frame, as_of, 30)
+        previous = analytics.in_window(frame, as_of, 60, 30)
+        for district, group in frame.groupby("district_id"):
+            share = float(analytics.high_risk(group).mean())
+            district_rows.append({"district_name": district_names.get(int(district), f"District #{int(district)}"), "case_count": int(len(group)),
+                                  "growth_pct": _percent_change(int((recent["district_id"] == district).sum()), int((previous["district_id"] == district).sum())),
+                                  "share": share})
+        district_rows.sort(key=lambda row: -row["case_count"])
+        district_rows = district_rows[:DASHBOARD_ROWS]
+        shares = sorted(row["share"] for row in district_rows)
+        for row in district_rows:
+            rank = (shares.index(row["share"]) + 1) / len(shares)
+            row["risk_level"] = "CRITICAL" if rank > 0.67 else "HIGH" if rank > 0.34 else "MODERATE"
+            del row["share"]
 
-    total_cases = query.count()
-    if total_cases == 0:
-        total_cases = db.query(CaseMaster).count()  # Fallback to total cases if filter too strict
+    station_rows = []
+    if not frame.empty:
+        open_cases = frame[analytics.is_open(frame, groups)]
+        for station, group in open_cases.groupby("station_id"):
+            investigators = max(int(group["officer_id"].nunique()), 1)
+            station_rows.append({"station_name": station_names.get(int(station), f"Station #{int(station)}"),
+                                 "case_count": int((frame["station_id"] == station).sum()), "pending_cases": int(len(group)),
+                                 "workload_score": round(len(group) / investigators, 2)})
+        station_rows.sort(key=lambda row: -row["pending_cases"])
+        station_rows = station_rows[:DASHBOARD_ROWS]
 
-    # 2. Hourly Diurnal Shift Aggregation (0 to 23 hours)
-    hourly_query = query.with_entities(
-        extract('hour', CaseMaster.IncidentFromDate).label('hr'),
-        func.count(CaseMaster.CaseMasterID)
-    ).group_by('hr').all()
+    category_rows = []
+    if not frame.empty:
+        recent90 = analytics.in_window(frame, as_of, 90)
+        previous90 = analytics.in_window(frame, as_of, 180, 90)
+        for head, group in frame.groupby("head_id"):
+            category_rows.append({"category_name": crime_names.get(int(head), f"#{int(head)}"), "case_count": int(len(group)),
+                                  "trend_direction": _trend_text(int((recent90["head_id"] == head).sum()), int((previous90["head_id"] == head).sum()))})
+        category_rows.sort(key=lambda row: -row["case_count"])
 
-    hourly_map = {int(r[0]): r[1] for r in hourly_query if r[0] is not None}
-    hourly_distribution = []
-    for h in range(24):
-        cnt = hourly_map.get(h, int(total_cases * (0.045 if 11 <= h <= 22 else 0.035)))
-        peak_label = "Night Peak Shift" if 20 <= h or h <= 4 else ("Evening Peak Shift" if 16 <= h <= 19 else None)
-        hourly_distribution.append({
-            "hour": h,
-            "count": cnt,
-            "peak_label": peak_label
+    hotspots = analytics.compute_hotspots(db, frame, limit=10)
+    alerts = _collect_alerts(db, frame, as_of)
+    plan = _patrol_numbers(hotspots)
+    open_total = int(analytics.is_open(frame, groups).sum()) if not frame.empty else 0
+    window = analytics.best_window(hourly)
+
+    explanations = []
+    if forecast["predicted"] is not None:
+        top_district = district_rows[0] if district_rows else None
+        explanations.append({
+            "title": "30-Day Registration Forecast",
+            "prediction": f"About {forecast['predicted']} FIRs are expected over the next 30 days ({growth:+.1f}% against the {recent_actual} registered in the last 30 days).",
+            "why_explanation": (f"Ridge-regression trend over daily registrations (trend: {forecast['trend']})"
+                                + (f"; busiest district {top_district['district_name']} with {top_district['case_count']} FIRs" if top_district else "")
+                                + (f"; busiest hour of day {top_hours[0]:02d}:00" if top_hours else "") + "."),
+            "confidence": forecast["backtest_accuracy"],
+            "supporting_stats": [f"{total} FIRs analysed (registered up to {as_of.isoformat()})",
+                                 (f"Backtest: the same method forecasting the last 30 days from earlier data was within {(1 - forecast['backtest_accuracy']) * 100:.0f}% of the {recent_actual} actually registered"
+                                  if forecast["backtest_accuracy"] is not None else "Backtest unavailable (not enough history)"),
+                                 (f"Most frequent crime category: {category_rows[0]['category_name']} ({category_rows[0]['case_count']} FIRs)" if category_rows else "No category data")],
+            "data_sources": "case_master (CrimeRegisteredDate), crime_type, police_station",
         })
-
-    # 3. Day of Week Aggregation (0 = Sunday to 6 = Saturday)
-    dow_names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    dow_query = query.with_entities(
-        extract('dow', CaseMaster.IncidentFromDate).label('dw'),
-        func.count(CaseMaster.CaseMasterID)
-    ).group_by('dw').all()
-
-    dow_map = {int(r[0]): r[1] for r in dow_query if r[0] is not None}
-    dow_distribution = []
-    for dw in range(7):
-        cnt = dow_map.get(dw, int(total_cases / 7))
-        pct = round((cnt / total_cases) * 100, 1) if total_cases > 0 else 14.2
-        dow_distribution.append({
-            "dow_index": dw,
-            "day_name": dow_names[dw],
-            "count": cnt,
-            "pct": pct
+    if window:
+        explanations.append({
+            "title": "Peak Incident Hours",
+            "prediction": f"{window['share']:.0%} of incidents happen between {analytics.window_label(window)}.",
+            "why_explanation": f"Hour-of-day distribution of {sum(hourly)} incidents; the three busiest hours are {', '.join(f'{h:02d}:00' for h in top_hours)}.",
+            "confidence": None,
+            "supporting_stats": [f"{window['incidents']} of {sum(hourly)} incidents fall inside the window",
+                                 f"{open_total} FIRs are still open ({open_total / total:.0%} of those analysed)"],
+            "data_sources": "case_master (IncidentFromDate)",
         })
-
-    # 4. Monthly Trend & 30-Day Forecast Time Series (2022 to 2026)
-    monthly_query = query.with_entities(
-        func.to_char(CaseMaster.CrimeRegisteredDate, 'YYYY-MM').label('ym'),
-        func.count(CaseMaster.CaseMasterID)
-    ).group_by('ym').order_by('ym').all()
-
-    monthly_trend = []
-    hist_counts = []
-    for ym, cnt in monthly_query:
-        if ym:
-            monthly_trend.append({
-                "year_month": ym,
-                "historical_count": cnt,
-                "forecast_count": None,
-                "data_type": "Historical"
-            })
-            hist_counts.append(cnt)
-
-    # Calculate 30-Day Forecast using exponential smoothing over recent months
-    recent_avg = sum(hist_counts[-6:]) / max(1, len(hist_counts[-6:])) if hist_counts else 85
-    growth_rate = 0.048  # Calculated +4.8% growth rate
-    predicted_30day = int(recent_avg * (1.0 + growth_rate))
-
-    monthly_trend.append({
-        "year_month": "2026-08 (Forecast)",
-        "historical_count": 0,
-        "forecast_count": predicted_30day,
-        "data_type": "Predicted Forecast"
-    })
-
-    # 5. District-Wise Real Crime Growth & Risk Level (Calculated from 30-Day Period Compares)
-    d_30_ago = now - timedelta(days=30)
-    d_60_ago = now - timedelta(days=60)
-
-    dist_query = db.query(
-        District.DistrictID,
-        District.DistrictName,
-        func.count(CaseMaster.CaseMasterID).label('total_cnt')
-    ).join(PoliceStation, PoliceStation.DistrictID == District.DistrictID)\
-     .join(CaseMaster, CaseMaster.PoliceStationID == PoliceStation.UnitID)\
-     .group_by(District.DistrictID, District.DistrictName)\
-     .order_by(func.count(CaseMaster.CaseMasterID).desc()).limit(10).all()
-
-    district_rankings = []
-    for did, dname, total_cnt in dist_query:
-        # Recent 30 days count
-        recent_cnt = db.query(func.count(CaseMaster.CaseMasterID))\
-            .join(PoliceStation, PoliceStation.UnitID == CaseMaster.PoliceStationID)\
-            .filter(PoliceStation.DistrictID == did)\
-            .filter(CaseMaster.CrimeRegisteredDate >= d_30_ago).scalar() or 0
-
-        # Prior 30 days count
-        prior_cnt = db.query(func.count(CaseMaster.CaseMasterID))\
-            .join(PoliceStation, PoliceStation.UnitID == CaseMaster.PoliceStationID)\
-            .filter(PoliceStation.DistrictID == did)\
-            .filter(and_(CaseMaster.CrimeRegisteredDate >= d_60_ago, CaseMaster.CrimeRegisteredDate < d_30_ago)).scalar() or 0
-
-        g_pct = round(((recent_cnt - prior_cnt) / max(1, prior_cnt)) * 100, 1) if prior_cnt > 0 else round((recent_cnt / max(1, total_cnt)) * 100, 1)
-        r_level = "CRITICAL" if total_cnt > 240 or g_pct > 15.0 else ("HIGH" if total_cnt > 160 or g_pct > 5.0 else "MEDIUM")
-        district_rankings.append({
-            "district_name": dname,
-            "case_count": total_cnt,
-            "growth_pct": g_pct,
-            "risk_level": r_level
+    repeaters = analytics.repeat_offender_activity(db, frame, as_of)
+    if repeaters:
+        explanations.append({
+            "title": "Repeat-Offender Activity",
+            "prediction": f"{len(repeaters)} repeat offender(s) have two or more FIRs registered in the last 90 days.",
+            "why_explanation": "Criminal-profile identities recorded on accused persons, counted over the last 90 days.",
+            "confidence": None,
+            "supporting_stats": [f"{r['name']}: {r['recent_cases']} FIRs ({', '.join(r['stations'][:2])})" for r in repeaters[:3]],
+            "data_sources": "accused (CriminalProfileID), case_master",
         })
-
-    # 6. Police Station Workload & Real Pending Case Backlog
-    station_query = db.query(
-        PoliceStation.UnitID,
-        PoliceStation.UnitName,
-        func.count(CaseMaster.CaseMasterID).label('total_cnt')
-    ).join(CaseMaster, CaseMaster.PoliceStationID == PoliceStation.UnitID)\
-     .group_by(PoliceStation.UnitID, PoliceStation.UnitName)\
-     .order_by(func.count(CaseMaster.CaseMasterID).desc()).limit(10).all()
-
-    station_rankings = []
-    for uid, stname, total_cnt in station_query:
-        # Real pending cases where CaseStatusID is registered or under investigation
-        pending_cnt = db.query(func.count(CaseMaster.CaseMasterID))\
-            .filter(CaseMaster.PoliceStationID == uid)\
-            .filter(or_(CaseMaster.CaseStatusID == 1, CaseMaster.CaseStatusID == 2)).scalar() or int(total_cnt * 0.4)
-
-        workload_score = round(min(98.0, (pending_cnt / max(1, total_cnt)) * 100 + 15), 1)
-        station_rankings.append({
-            "station_name": stname,
-            "case_count": total_cnt,
-            "pending_cases": pending_cnt,
-            "workload_score": workload_score
-        })
-
-    # 7. Crime Major Head Category Real Trend Direction
-    cat_query = db.query(
-        CrimeType.CrimeHeadID,
-        CrimeType.CrimeGroupName,
-        func.count(CaseMaster.CaseMasterID).label('total_cnt')
-    ).join(CaseMaster, CaseMaster.CrimeMajorHeadID == CrimeType.CrimeHeadID)\
-     .group_by(CrimeType.CrimeHeadID, CrimeType.CrimeGroupName)\
-     .order_by(func.count(CaseMaster.CaseMasterID).desc()).limit(8).all()
-
-    category_rankings = []
-    for ch_id, cname, total_cnt in cat_query:
-        # Real 30-day growth per crime category
-        recent_cat = db.query(func.count(CaseMaster.CaseMasterID))\
-            .filter(CaseMaster.CrimeMajorHeadID == ch_id)\
-            .filter(CaseMaster.CrimeRegisteredDate >= d_30_ago).scalar() or 0
-
-        prior_cat = db.query(func.count(CaseMaster.CaseMasterID))\
-            .filter(CaseMaster.CrimeMajorHeadID == ch_id)\
-            .filter(and_(CaseMaster.CrimeRegisteredDate >= d_60_ago, CaseMaster.CrimeRegisteredDate < d_30_ago)).scalar() or 0
-
-        c_growth = round(((recent_cat - prior_cat) / max(1, prior_cat)) * 100, 1) if prior_cat > 0 else 5.2
-        if c_growth > 8.0:
-            tdir = f"⬆️ Increasing (+{c_growth}%)"
-        elif c_growth < -3.0:
-            tdir = f"⬇️ Decreasing ({c_growth}%)"
-        else:
-            tdir = f"➡️ Stable ({c_growth:+}%)"
-
-        category_rankings.append({
-            "category_name": cname,
-            "case_count": total_cnt,
-            "trend_direction": tdir
-        })
-
-    # Find peak hour for XAI explanation
-    peak_h = max(hourly_distribution, key=lambda x: x["count"])["hour"] if hourly_distribution else 21
-    top_d_name = district_rankings[0]["district_name"] if district_rankings else "Bengaluru Urban"
-    top_d_cnt = district_rankings[0]["case_count"] if district_rankings else total_cases
-
-    # Count repeat suspects in DB
-    repeat_offenders_cnt = db.query(func.count(Accused.AccusedMasterID)).filter(Accused.IsRepeatOffender == 1).scalar() or 210
-
-    # 8. Explainable AI (XAI) Prediction Factors Citing Dynamic PostgreSQL Data
-    xai_explanations = [
-        {
-            "title": "30-Day Statewide FIR Growth Forecast",
-            "prediction": f"Crime registrations in priority divisions are forecasted to reach {predicted_30day} FIRs next month (+4.8%).",
-            "why_explanation": f"Computed directly from PostgreSQL case logs across priority divisions ({top_d_name}: {top_d_cnt} FIRs) showing peak {peak_h}:00 - {peak_h+1}:00 hrs diurnal concentration.",
-            "confidence": 0.93,
-            "supporting_stats": [
-                f"Historical dataset: {total_cases} total FIR records analyzed",
-                f"Peak diurnal shift: {max(hourly_distribution, key=lambda x: x['count'])['count']} cases at {peak_h}:00 hrs",
-                f"Top crime head: {category_rankings[0]['category_name'] if category_rankings else 'Property Offences'} ({category_rankings[0]['case_count'] if category_rankings else 391} FIRs)"
-            ],
-            "data_sources": "PostgreSQL CaseMaster + CrimeType + PoliceStation Master Registry"
-        },
-        {
-            "title": "Night Beat Patrol Optimization",
-            "prediction": f"Night shift property & burglary offences peak between {peak_h}:00 - 02:00 hrs across urban sectors.",
-            "why_explanation": f"PostgreSQL incident timestamps reveal high night-shift concentration coupled with {repeat_offenders_cnt} flagged repeat offenders operating across multiple station precincts.",
-            "confidence": 0.91,
-            "supporting_stats": [
-                f"{repeat_offenders_cnt} repeat offenders identified across >1 police station",
-                f"Top precinct workload: {station_rankings[0]['station_name'] if station_rankings else 'Bagalkot Town'} ({station_rankings[0]['pending_cases'] if station_rankings else 42} pending cases)",
-                f"Category surge: {category_rankings[0]['trend_direction'] if category_rankings else 'Property offences increasing'}"
-            ],
-            "data_sources": "PostgreSQL Accused + IncidentFromDate Timestamp Logs"
-        }
-    ]
 
     return {
-        "total_cases_analyzed": total_cases,
-        "predicted_30day_cases": predicted_30day,
-        "growth_rate_pct": growth_rate * 100,
-        "high_risk_hotspot_count": 8,
-        "patrol_squads_recommended": 14,
-        "early_warnings_active": 5,
-        "backlog_workload_index": 68.4,
+        "total_cases_analyzed": total,
+        "predicted_30day_cases": forecast["predicted"] or 0,
+        "growth_rate_pct": growth,
+        "high_risk_hotspot_count": sum(1 for h in hotspots if h["risk_level"] in ("Critical", "High")),
+        "patrol_squads_recommended": plan["units"],
+        "early_warnings_active": len(alerts),
+        "backlog_workload_index": round(open_total / total * 100, 1) if total else 0.0,
+        "open_cases": open_total,
+        "peak_window": analytics.window_label(window), "peak_window_share": window["share"] if window else None,
+        "peak_shift": analytics.shift_name(window),
         "hourly_distribution": hourly_distribution,
         "dow_distribution": dow_distribution,
         "monthly_trend": monthly_trend,
-        "district_rankings": district_rankings,
-        "station_rankings": station_rankings,
-        "category_rankings": category_rankings,
-        "xai_explanations": xai_explanations,
-        "model_version": "ksp-xai-predictive-v3"
+        "district_rankings": district_rows,
+        "station_rankings": station_rows,
+        "category_rankings": category_rows,
+        "xai_explanations": explanations,
+        "as_of_date": as_of.isoformat(),
+        "future_dated_cases_excluded": future,
+        "forecast_trend": forecast["trend"],
+        "forecast_backtest_accuracy": forecast["backtest_accuracy"],
     }
 
 
-def get_hotspot_rankings(
-    db: Session,
-    current_user: User,
-    district_id: Optional[int] = None,
-    station_id: Optional[int] = None,
-    crime_category: Optional[str] = None,
-) -> dict:
-    """
-    Computes KDE spatial hotspot rankings, risk levels, repeat offender counts, and evidence-based reasons.
-    """
-    query = db.query(CaseMaster).filter(CaseMaster.latitude != 0, CaseMaster.longitude != 0)
-    query = apply_jurisdiction_filter(query, db, current_user)
+# --------------------------------------------------------------------------------------- hotspots
 
-    if district_id is not None and isinstance(district_id, int):
-        ps_subquery = db.query(PoliceStation.UnitID).filter(PoliceStation.DistrictID == district_id).subquery()
-        query = query.filter(CaseMaster.PoliceStationID.in_(ps_subquery))
+def _peak_text(window: dict | None) -> str:
+    return analytics.window_label(window) or "no incident times recorded"
 
-    if station_id is not None and isinstance(station_id, int):
-        query = query.filter(CaseMaster.PoliceStationID == station_id)
 
-    cases = query.limit(100).all()
-    if not cases:
-        cases = db.query(CaseMaster).filter(CaseMaster.latitude != 0).limit(50).all()
-
-    hotspot_locations = [
-        {"name": "Belagavi Central Market Corridor", "lat": 15.85303, "lon": 74.49363},
-        {"name": "Hubballi Commercial Freight Hub", "lat": 15.3647, "lon": 75.1240},
-        {"name": "Bengaluru Electronic City Highway Bypass", "lat": 12.8452, "lon": 77.6602},
-        {"name": "Mysuru Town Railway Junction", "lat": 12.3051, "lon": 76.6551},
-        {"name": "Tarikere Bus Stand Sector", "lat": 13.7144, "lon": 75.8153},
-        {"name": "Saundatti Temple Outer Perimeter", "lat": 15.7600, "lon": 75.1167},
-        {"name": "Udupi Coastal Highway Checkpost", "lat": 13.3409, "lon": 74.7421},
-        {"name": "Kalaburagi Industrial Estate", "lat": 17.3297, "lon": 76.8343},
-    ]
-
-    hotspots = []
-    for idx, loc in enumerate(hotspot_locations):
-        c_count = 14 + (idx * 3) % 11
-        repeats = 3 + (idx * 2) % 5
-        pendings = 5 + idx % 4
-        h_score = round(94.0 - idx * 4.5, 1)
-        r_level = "Critical" if h_score > 85 else ("High" if h_score > 75 else "Medium")
-        p_window = "20:00 - 02:00 hrs" if idx % 2 == 0 else "14:00 - 19:00 hrs"
-
-        reasons = f"{c_count} historical FIRs, {repeats} repeat offenders identified, {r_level.lower()} diurnal incident density during {p_window}, {pendings} unresolved cases under active investigation."
-
-        hotspots.append({
-            "rank": idx + 1,
-            "location_name": loc["name"],
-            "latitude": loc["lat"],
-            "longitude": loc["lon"],
-            "hotspot_score": h_score,
-            "risk_level": r_level,
-            "case_count": c_count,
-            "repeat_offenders_count": repeats,
-            "pending_cases": pendings,
-            "peak_window": p_window,
-            "reason": reasons
-        })
-
+def get_hotspot_rankings(db: Session, current_user: User, district_id: Optional[int] = None,
+                         station_id: Optional[int] = None, crime_category: Optional[str] = None) -> dict:
+    frame, _, _ = _scoped_frame(db, current_user, district_id=district_id, station_id=station_id, crime_category=crime_category)
+    hotspots = analytics.compute_hotspots(db, frame, limit=10)
     return {
         "total_hotspots": len(hotspots),
-        "hotspots": hotspots,
-        "model_version": "ksp-kde-hotspot-v3"
+        "hotspots": [{
+            "rank": h["rank"], "location_name": h["location_name"], "latitude": h["latitude"], "longitude": h["longitude"],
+            "hotspot_score": h["hotspot_score"], "risk_level": h["risk_level"], "case_count": h["case_count"],
+            "repeat_offenders_count": h["repeat_offender_profiles"], "pending_cases": h["open_cases"],
+            "peak_window": _peak_text(h["peak_window"]), "reason": h["reason"],
+        } for h in hotspots],
+        "model_version": analytics.HOTSPOT_MODEL_VERSION,
     }
 
 
-def get_patrol_strategy(
-    db: Session,
-    current_user: User,
-    district_id: Optional[int] = None,
-    station_id: Optional[int] = None,
-) -> dict:
-    """
-    Automatically computes recommended patrol squad allocations, vehicle distribution, and resource optimization.
-    """
-    dist_name = "Statewide Command"
-    if district_id and isinstance(district_id, int):
-        dist_obj = db.query(District).filter(District.DistrictID == district_id).first()
-        if dist_obj:
-            dist_name = dist_obj.DistrictName
+# ------------------------------------------------------------------------------------------ patrol
 
-    # Resource Optimization Recommendations based on real PostgreSQL data
-    resource_recs = [
-        {
-            "unit_type": "Cyber Crime Special Cell",
-            "quantity": 2,
-            "justification": "350 Cyber Crime & Financial Fraud FIRs recorded in PostgreSQL database.",
-            "data_support": "High volume of bank statement and digital evidence seizures."
-        },
-        {
-            "unit_type": "Night Beat Mobile Cars",
-            "quantity": 4,
-            "justification": "Peak 20:00 - 02:00 night burglary frequency across commercial sectors.",
-            "data_support": "1,480 total night shift FIR records."
-        },
-        {
-            "unit_type": "Forensic & Fingerprint Squad",
-            "quantity": 1,
-            "justification": "10,911 physical evidence items including fingerprint match logs.",
-            "data_support": "Malkhana physical evidence registry."
-        },
-        {
-            "unit_type": "Women Safety Patrol (Pink Hoysala)",
-            "quantity": 2,
-            "justification": "333 Crimes Against Women & Harassment FIRs recorded.",
-            "data_support": "PostgreSQL CrimeMajorHeadID = 3."
-        }
-    ]
+def _patrol_numbers(hotspots: list[dict]) -> dict:
+    """One mobile car per Critical hotspot, one bike unit per High hotspot, OFFICERS_PER_PATROL_UNIT officers per unit."""
+    cars = sum(1 for h in hotspots if h["risk_level"] == "Critical")
+    bikes = sum(1 for h in hotspots if h["risk_level"] == "High")
+    if cars + bikes == 0 and hotspots:
+        bikes = 1  # always cover the densest hotspot
+    return {"cars": cars, "bikes": bikes, "units": cars + bikes, "officers": (cars + bikes) * OFFICERS_PER_PATROL_UNIT}
 
+
+def _route_order(hotspots: list[dict]) -> list[dict]:
+    """Nearest-neighbour ordering starting from the densest hotspot."""
+    remaining = list(hotspots)
+    if not remaining:
+        return []
+    route = [remaining.pop(0)]
+    while remaining:
+        last = route[-1]
+        nxt = min(remaining, key=lambda h: (h["latitude"] - last["latitude"]) ** 2 + (h["longitude"] - last["longitude"]) ** 2)
+        remaining.remove(nxt)
+        route.append(nxt)
+    return route
+
+
+def get_patrol_strategy(db: Session, current_user: User, district_id: Optional[int] = None, station_id: Optional[int] = None) -> dict:
+    frame, as_of, _ = _scoped_frame(db, current_user, district_id=district_id, station_id=station_id)
+    scope = "Statewide"
+    if station_id:
+        scope = reference_data.station_names(db).get(station_id, f"Station #{station_id}")
+    elif district_id:
+        scope = reference_data.district_names(db).get(district_id, f"District #{district_id}")
+
+    hotspots = analytics.compute_hotspots(db, frame, limit=8)
+    if not hotspots:
+        return {"district_name": scope, "recommended_officers": 0, "recommended_cars": 0, "recommended_bikes": 0,
+                "suggested_shift": "n/a", "suggested_timing": "n/a", "priority_level": "NONE", "patrol_route": [],
+                "reasoning": "No geocoded cases in this scope, so no patrol plan can be derived.", "resource_recommendations": []}
+
+    window = analytics.best_window(analytics.hourly_counts(frame))
+    plan = _patrol_numbers(hotspots)
+    crime_names = reference_data.crime_head_names(db)
+    top_heads = analytics.top_counts(frame["head_id"], crime_names, 3)
+    recent_by_head = analytics.in_window(frame, as_of, 30)["head_id"].value_counts()
+    head_ids = {name: head_id for head_id, name in crime_names.items()}
+
+    recommendations = [{
+        "unit_type": _unit_for(name), "quantity": 1,
+        "justification": f"{count} {name} FIRs ({count / len(frame):.0%} of cases in scope); {int(recent_by_head.get(head_ids.get(name), 0))} in the last 30 days.",
+        "data_support": "case_master x crime_type",
+    } for name, count in top_heads]
+
+    top = hotspots[0]
     return {
-        "district_name": dist_name,
-        "recommended_officers": 8,
-        "recommended_cars": 2,
-        "recommended_bikes": 4,
-        "suggested_shift": "Night Beat & Evening High-Density Shift",
-        "suggested_timing": "20:00 - 02:00 hrs (Peak Burglary Window)",
-        "priority_level": "CRITICAL",
-        "patrol_route": [
-            "Precinct Police Station",
-            "Central Market Commercial Corridor",
-            "State Highway Bypass Checkpost",
-            "Railway Station Perimeter",
-            "Residential Beat Sector 4"
-        ],
-        "reasoning": "Deploy 2 Patrol Cars & 4 Motorbike Units (8 Officers total) between 20:00 - 02:00 hrs to suppress commercial burglary and motor vehicle theft in high-density KDE clusters.",
-        "resource_recommendations": resource_recs
+        "district_name": scope,
+        "recommended_officers": plan["officers"], "recommended_cars": plan["cars"], "recommended_bikes": plan["bikes"],
+        "officers_per_unit": OFFICERS_PER_PATROL_UNIT, "hotspots_considered": len(hotspots),
+        "suggested_shift": analytics.shift_name(window) or "n/a",
+        "suggested_timing": analytics.window_label(window) or "n/a",
+        "priority_level": top["risk_level"].upper(),
+        "patrol_route": [h["location_name"] for h in _route_order(hotspots)],
+        "reasoning": (
+            f"{len(hotspots)} KDE hotspots found in {scope}; the densest ({top['location_name']}) holds {top['case_count']} FIRs, "
+            f"{top['high_risk_cases']} rated High/Severe. {window['share']:.0%} of incidents fall in {analytics.window_label(window)}. "
+            f"Rule-based allocation: one mobile car per Critical hotspot ({plan['cars']}), one bike unit per High hotspot ({plan['bikes']}), "
+            f"{OFFICERS_PER_PATROL_UNIT} officers per unit."
+        ),
+        "resource_recommendations": recommendations,
     }
 
 
-def get_early_warnings(
-    db: Session,
-    current_user: User,
-    district_id: Optional[int] = None,
-) -> dict:
-    """
-    Generates dynamic Early Warning Alerts derived directly from PostgreSQL case trends.
-    """
-    alerts = [
-        {
-            "alert_id": "ALERT-2026-001",
-            "alert_type": "Burglary Spike Warning",
-            "title": "Night Burglary Spike in Commercial Corridors",
-            "confidence": 0.94,
-            "risk_level": "Critical",
-            "evidence": "370 Property FIRs recorded with 1,480 night-time incident timestamps.",
-            "reason": "Burglary FIRs increased by 18% over the previous month in 3 neighboring police stations.",
-            "affected_stations": ["Hubballi Old Town PS", "Ron PS", "Saundatti PS"],
-            "suggested_action": "Deploy 2 Mobile Patrol Cars and establish 4 fixed night checkposts between 20:00 - 02:00 hrs."
-        },
-        {
-            "alert_id": "ALERT-2026-002",
-            "alert_type": "Cyber Fraud Spike",
-            "title": "Online Financial Extortion & Social Media Fraud Surge",
-            "confidence": 0.88,
-            "risk_level": "High",
-            "evidence": "350 Cyber Crime FIRs and Bank Account Evidence items seized in PostgreSQL.",
-            "reason": "Phishing & fake social media extortion complaints surged by 24% in urban precincts.",
-            "affected_stations": ["Bengaluru Town PS", "Mysuru Town PS", "Vijayanagar PS"],
-            "suggested_action": "Deploy Cyber Crime Special Cell for immediate bank account freeze and SIM CDR analysis."
-        },
-        {
-            "alert_id": "ALERT-2026-003",
+# --------------------------------------------------------------------------------- early warnings
+
+def _collect_alerts(db: Session, frame: pd.DataFrame, as_of) -> list[dict]:
+    alerts = []
+    for spike in analytics.detect_spikes(db, frame, as_of)[:6]:
+        place = spike["district_name"] or "statewide"
+        alerts.append({
+            "alert_type": "Crime Spike",
+            "title": f"{spike['head_name']} spike ({place})",
+            "confidence": spike["confidence"], "risk_level": spike["risk_level"],
+            "evidence": f"{spike['recent_count']} FIRs in the last 30 days against an expected {spike['expected_count']} (baseline: previous six 30-day periods).",
+            "reason": f"One-sided Poisson test p = {spike['p_value']:.2g}, below the Bonferroni threshold for {spike['tests_run']} tests (family-wise 5%).",
+            "affected_stations": spike["stations"],
+            "suggested_action": f"Review recent {spike['head_name']} FIRs in {place}; consider the {_unit_for(spike['head_name'])}.",
+        })
+    repeaters = analytics.repeat_offender_activity(db, frame, as_of)
+    if repeaters:
+        stations = sorted({s for r in repeaters for s in r["stations"]})[:4]
+        alerts.append({
             "alert_type": "Repeat Offender Activity",
-            "title": "Multi-FIR Repeat Offender Syndicate Movement",
-            "confidence": 0.91,
-            "risk_level": "High",
-            "evidence": "210 repeat suspects identified appearing in >1 FIR case file.",
-            "reason": "Suspect Ryan Yadav & David Mital identified across 9 separate FIR charge-sheets.",
-            "affected_stations": ["Moodabidri PS", "Tiptur PS", "Jagalur PS"],
-            "suggested_action": "Issue history-sheet surveillance order and coordinate with neighboring precinct inspectors."
-        },
-        {
-            "alert_id": "ALERT-2026-004",
-            "alert_type": "Vehicle Theft Cluster",
-            "title": "Two-Wheeler & Commercial Getaway Theft Cluster",
-            "confidence": 0.85,
-            "risk_level": "Medium",
-            "evidence": "712 Vehicle seizure records in PostgreSQL Vehicle Master table.",
-            "reason": "Two-wheeler thefts concentrated near transit hubs during 17:00 - 21:00 evening hours.",
-            "affected_stations": ["Belagavi Town PS", "Tarikere PS"],
-            "suggested_action": "Set up ANPR camera surveillance and motor vehicle document verification checkposts."
-        }
-    ]
-
-    return {
-        "active_alerts_count": len(alerts),
-        "alerts": alerts
-    }
+            "title": f"{len(repeaters)} repeat offender(s) with multiple recent FIRs",
+            "confidence": None, "risk_level": "High",
+            "evidence": "; ".join(f"{r['name']}: {r['recent_cases']} FIRs" for r in repeaters[:3]) + " in the last 90 days.",
+            "reason": "Accused persons with a recorded criminal profile appearing in two or more FIRs registered in the last 90 days.",
+            "affected_stations": stations,
+            "suggested_action": "Cross-check the linked FIRs for common modus operandi and review history-sheet surveillance.",
+        })
+    overdue = analytics.overdue_investigations(db, frame, as_of)
+    if overdue["count"]:
+        alerts.append({
+            "alert_type": "Overdue Investigations",
+            "title": f"{overdue['count']} investigations past the statutory window",
+            "confidence": None, "risk_level": "High" if overdue["count"] >= 0.25 * max(overdue["under_investigation"], 1) else "Medium",
+            "evidence": f"{overdue['count']} of {overdue['under_investigation']} 'Under Investigation' FIRs are older than 90 days (heinous) or 60 days (other).",
+            "reason": "Statutory investigation windows under BNSS section 187, measured from the FIR registration date.",
+            "affected_stations": [name for name, _ in overdue["top_stations"]],
+            "suggested_action": "Review charge-sheet readiness or seek extension for the oldest cases at the listed stations.",
+        })
+    for index, alert in enumerate(alerts, start=1):
+        alert["alert_id"] = f"EW-{index:03d}"
+    return alerts
 
 
-def process_assistant_query(
-    db: Session,
-    current_user: User,
-    query_text: str,
-) -> dict:
-    """
-    Answers operational command center queries referencing actual PostgreSQL database statistics.
-    """
-    total_cases = db.query(CaseMaster).count()
-    high_risk_cases = db.query(func.count(CaseMaster.CaseMasterID)).filter(CaseMaster.AIRiskScore >= 0.70).scalar() or 0
-    repeat_offenders_cnt = db.query(func.count(Accused.AccusedMasterID)).filter(Accused.IsRepeatOffender == 1).scalar() or 0
+def get_early_warnings(db: Session, current_user: User, district_id: Optional[int] = None) -> dict:
+    frame, as_of, _ = _scoped_frame(db, current_user, district_id=district_id)
+    alerts = _collect_alerts(db, frame, as_of)
+    return {"active_alerts_count": len(alerts), "alerts": alerts}
 
-    top_districts = db.query(
-        District.DistrictName, func.count(CaseMaster.CaseMasterID).label("cnt")
-    ).join(PoliceStation, CaseMaster.PoliceStationID == PoliceStation.UnitID) \
-     .join(District, PoliceStation.DistrictID == District.DistrictID) \
-     .group_by(District.DistrictName).order_by(func.count(CaseMaster.CaseMasterID).desc()).limit(3).all()
-    top_districts_str = ", ".join(f"{d[0]} ({d[1]} cases)" for d in top_districts) or "N/A"
 
-    context = (
-        f"Total FIR records: {total_cases}\n"
-        f"High AI risk cases (score >= 0.70): {high_risk_cases}\n"
-        f"Repeat offenders on record: {repeat_offenders_cnt}\n"
-        f"Top case-volume districts: {top_districts_str}\n"
-    )
-    prompt = (
-        "You are Forensiq's Operational Command AI Assistant, advising a police command center on "
-        "patrol deployment, hotspot risk, and resource allocation. Using ONLY the real statistics "
-        "below, answer the officer's question in a concise operational-briefing tone with markdown "
-        "headers and bullet points. Do not invent specific numbers not given below.\n\n"
-        f"{context}\n"
-        f"Officer's question: {query_text}"
-    )
+# ------------------------------------------------------------------------------------------- chat
 
-    try:
-        from app.services.gemini_client import generate_content
-        answer = generate_content(prompt)
-        actions = [
-            "Review the relevant dashboard tab for supporting charts",
-            "Cross-reference with the Hotspot Analytics and Network Analytics modules",
-            "Escalate to district command if immediate deployment is required",
-        ]
-        return {
-            "query": query_text,
-            "answer": answer,
-            "supporting_data": {
-                "total_cases_analyzed": total_cases,
-                "high_risk_cases": high_risk_cases,
-                "repeat_offenders_identified": repeat_offenders_cnt,
-                "model_confidence": 0.9,
-            },
-            "recommended_actions": actions,
-        }
-    except Exception:
-        pass
-
-    q = query_text.lower()
-
-    if "patrol" in q or "tonight" in q or "route" in q:
-        answer = (
-            f"### 🛡️ Forensiq Tactical Patrol Command Directive\n\n"
-            f"**Operational Query**: *\"{query_text}\"*\n\n"
-            f"Based on real-time PostGIS spatio-temporal clustering of {total_cases} database records:\n\n"
-            f"* **High-Density Sector**: Belagavi Central Market & Hubballi Industrial Corridor\n"
-            f"* **Optimal Time Window**: 20:00 - 02:00 hrs (Peak crime frequency window)\n"
-            f"* **Deployment Allocation**: 2 Mobile Patrol Units + 4 Station Constables on fixed beat checkposts."
-        )
-        actions = [
-            "Deploy 2 Mobile Patrol Cars (20:00 - 02:00 hrs)",
-            "Establish 4 fixed night checkposts at high-density sector perimeters",
-            "Enforce automatic ANPR license plate scanning on major corridors"
-        ]
-    elif "risky" in q or "hotspot" in q or "danger" in q:
-        answer = (
-            f"### 🚨 Forensiq Hotspot Spatial Intelligence Report\n\n"
-            f"**Operational Query**: *\"{query_text}\"*\n\n"
-            f"Hotspots are algorithmically prioritized using Kernel Density Estimation (KDE) over **{total_cases} total FIR records**:\n\n"
-            f"* **Core Driver 1**: High historical FIR concentration within 2km station boundaries.\n"
-            f"* **Core Driver 2**: 210 identified multi-FIR repeat offender profiles active in the sector.\n"
-            f"* **Core Driver 3**: Unresolved property and burglary offences registered in the last 90 days."
-        )
-        actions = [
-            "Review KDE spatial density contours on GIS Map View",
-            "Inspect repeat offender dossier logs and active bail status",
-            "Increase CCTV surveillance coverage around high-density clusters"
-        ]
-    elif "cctv" in q or "surveillance" in q or "camera" in q:
-        answer = (
-            f"### 📹 CCTV Surveillance Expansion Directive\n\n"
-            f"**Command Action**: *\"{query_text}\"*\n\n"
-            f"* **Directive Status**: Logged and dispatched to precinct field operations.\n"
-            f"* **Deployment Target**: 4 mobile high-definition CCTV camera trailers allocated to Belagavi Sector A & Hubballi Sector B perimeters.\n"
-            f"* **Analytics Integration**: Automated ANPR and facial recognition feeds routed to Command Center Matrix."
-        )
-        actions = [
-            "Verify live CCTV stream feeds in Command Room",
-            "Deploy 2 Mobile ANPR Surveillance Vehicles",
-            "Review sector boundary movement logs"
-        ]
-    elif "time series" in q or "forecast" in q or "predictive" in q:
-        answer = (
-            f"### 📈 Time-Series Predictive Crime Forecasting\n\n"
-            f"**Command Directive**: *\"{query_text}\"*\n\n"
-            f"* **7-Day Trend Projection**: Forecast predicts a 12% increase in property crime frequency during upcoming weekend shifts.\n"
-            f"* **High-Risk Time Window**: Friday & Saturday (19:00 - 02:00 hrs).\n"
-            f"* **Target Precincts**: Hubballi Central & Belagavi North sectors."
-        )
-        actions = [
-            "Reinforce weekend night shift roster by +15%",
-            "Issue high-alert briefing to station inspectors",
-            "Deploy mobile checkposts at district entry points"
-        ]
-    elif "early warning" in q or "anomaly" in q or "alert" in q:
-        answer = (
-            f"### ⚠️ Early Warning Anomaly Intelligence\n\n"
-            f"**Command Directive**: *\"{query_text}\"*\n\n"
-            f"* **Anomaly Detected**: Spike in vehicle theft FIRs registered in Belagavi District (+35% over 72-hour baseline).\n"
-            f"* **Modus Operandi Pattern**: Target vehicles parked in unlit public areas between 01:00 and 04:00 hrs."
-        )
-        actions = [
-            "Initiate special vehicle theft investigation taskforce",
-            "Set up automatic ANPR alerts on exit highways",
-            "Cross-reference suspect profiles with repeat offender index"
-        ]
-    elif "tactical" in q or "strategy" in q or "execute" in q:
-        answer = (
-            f"### ⚡ Tactical Patrol Strategy Execution\n\n"
-            f"**Command Directive**: *\"{query_text}\"*\n\n"
-            f"* **Strategy Sector A**: High-visibility mobile patrols along primary commercial arteries.\n"
-            f"* **Tactical Assignment**: 4 Mobile Patrol Squads + 8 Station Constables on active beat.\n"
-            f"* **Execution Status**: Active dispatch sent to field officer terminals."
-        )
-        actions = [
-            "Confirm field unit GPS check-in via Mobile App",
-            "Establish high-visibility flashing beacon checkposts",
-            "Coordinate joint beat patrols across station boundaries"
-        ]
-    elif "officer" in q or "deploy" in q or "many" in q or "staff" in q:
-        answer = (
-            f"### 👮 Forensiq Resource Deployment Allocation Model\n\n"
-            f"**Operational Query**: *\"{query_text}\"*\n\n"
-            f"AI Resource Allocation model recommends deploying **8 Officers per high-density precinct** (2 Sub-Inspectors + 6 Constables) during peak evening and night shifts to maintain optimal response times (< 8 minutes)."
-        )
-        actions = [
-            "Allocate 2 Sub-Inspectors & 6 Constables for evening beat shift",
-            "Deploy 2 Mobile Patrol Units equipped with live CAD terminals",
-            "Activate Special Cyber & Financial Intelligence Monitoring Cell"
-        ]
-    else:
-        answer = (
-            f"### 📊 Forensiq Operational Intelligence Summary\n\n"
-            f"**Operational Query**: *\"{query_text}\"*\n\n"
-            f"Analyzed **{total_cases} PostgreSQL case records** across 31 Karnataka Districts.\n\n"
-            f"* **Peak Activity Hours**: Property offences and cyber fraud exhibit peak frequency between 18:00 and 01:00 hrs.\n"
-            f"* **Active Precinct Scope**: 8 high-density hotspot clusters flagged for tactical intervention.\n"
-            f"* **Repeat Offender Index**: 210 repeat offender entities tracked across linked FIR networks."
-        )
-        actions = [
-            "Inspect Predictive Time Series Forecasting Dashboard",
-            "Review Early Warning Anomaly Alerts",
-            "Execute Tactical Patrol Strategy for Sector A"
-        ]
-
-    return {
-        "query": query_text,
-        "answer": answer,
-        "supporting_data": {
-            "total_cases_analyzed": total_cases,
-            "active_hotspots": 8,
-            "repeat_offenders_identified": 210,
-            "model_confidence": 0.92
-        },
-        "recommended_actions": actions
-    }
+def process_assistant_query(db: Session, current_user: User, query_text: str,
+                            district_id: Optional[int] = None, station_id: Optional[int] = None) -> dict:
+    """Command-centre chat: answered by the same data-grounded agent as the main assistant, scoped to the
+    district / station selected on the screen unless the question names another place."""
+    from app.services import assistant_service
+    scope = (reference_data.station_names(db).get(station_id) if station_id
+             else reference_data.district_names(db).get(district_id) if district_id else None)
+    prompt = f"[The user has {scope} selected on screen: answer for {scope} unless the question names somewhere else.] {query_text}" if scope else query_text
+    result = assistant_service.answer_for_command_centre(db, current_user, prompt)
+    result["query"] = query_text
+    return result

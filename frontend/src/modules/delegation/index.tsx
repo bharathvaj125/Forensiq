@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { taskService, TaskDelegation } from "../../services/taskService";
 import { caseService } from "../../services/caseService";
+import { useReferenceOptions } from "../../services/referenceService";
 import {
   ClipboardList,
   Plus,
@@ -31,21 +32,24 @@ export default function TaskDelegationModule() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignedToUserId, setAssignedToUserId] = useState<number | "">("");
-  const [selectedCaseMasterId, setSelectedCaseMasterId] = useState<number | "">("");
   const [priority, setPriority] = useState("High");
   const [dueDate, setDueDate] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   // Evidence State
-  const [evidenceType, setEvidenceType] = useState("CCTV Footage");
+  const [evidenceType, setEvidenceType] = useState("");
   const [evidenceDesc, setEvidenceDesc] = useState("");
   const [showAddEvidenceForm, setShowAddEvidenceForm] = useState(false);
 
-  // Fetch cases accessible to appointing officer
-  const { data: accessibleCases } = useQuery({
-    queryKey: ["accessibleCasesList"],
-    queryFn: () => caseService.getCases({ pageSize: 100 }),
+  // Case lookup: searches every case the officer can see (by case number or text), instead of listing a fixed sample
+  const [caseSearch, setCaseSearch] = useState("");
+  const [linkedCase, setLinkedCase] = useState<{ id: number; caseNo: string } | null>(null);
+  const { data: caseMatches } = useQuery({
+    queryKey: ["delegationCaseSearch", caseSearch],
+    queryFn: () => caseService.getCases({ pageSize: 8, search: caseSearch.trim() }),
+    enabled: caseSearch.trim().length >= 3 && !linkedCase,
   });
+  const reference = useReferenceOptions();
 
   const addEvidenceMutation = useMutation({
     mutationFn: ({ caseId, payload }: { caseId: number; payload: { EvidenceType: string; Description: string } }) =>
@@ -86,6 +90,8 @@ export default function TaskDelegationModule() {
       setTitle("");
       setDescription("");
       setAssignedToUserId("");
+      setLinkedCase(null);
+      setCaseSearch("");
       setPriority("High");
       setDueDate("");
       setFormError(null);
@@ -106,7 +112,7 @@ export default function TaskDelegationModule() {
       Title: title,
       Description: description,
       AssignedToUserID: Number(assignedToUserId),
-      CaseMasterID: selectedCaseMasterId ? Number(selectedCaseMasterId) : undefined,
+      CaseMasterID: linkedCase?.id,
       Priority: priority,
       DueDate: dueDate || undefined,
     });
@@ -335,10 +341,10 @@ export default function TaskDelegationModule() {
                   className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
                   required
                 >
-                  <option value="">-- Select Officer Under Your Command --</option>
+                  <option value="">Select an officer of lower rank</option>
                   {officersList?.map((off: any) => (
                     <option key={off.UserID} value={off.UserID}>
-                      {off.Username} ({off.Rank} | Badge #{off.BadgeNumber})
+                      {off.OfficerName || off.Username}{off.Rank ? ` (${off.Rank}` : " ("}{off.BadgeNumber ? ` | ${off.BadgeNumber}` : ""})
                     </option>
                   ))}
                 </select>
@@ -348,18 +354,35 @@ export default function TaskDelegationModule() {
                 <label className="block text-xs font-mono font-bold text-slate-300 uppercase mb-1">
                   2. Link to Registered Case / FIR (Jurisdiction Filtered)
                 </label>
-                <select
-                  value={selectedCaseMasterId}
-                  onChange={(e) => setSelectedCaseMasterId(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
-                >
-                  <option value="">-- No Specific Case Link (General Patrol Directive) --</option>
-                  {accessibleCases?.data?.map((c: any) => (
-                    <option key={c.CaseMasterID} value={c.CaseMasterID}>
-                      Case #{c.CaseNo} — Priority: {c.InvestigationPriority || 'Standard'} (FIR Reg: {c.FIRDate || '2026'})
-                    </option>
-                  ))}
-                </select>
+                {linkedCase ? (
+                  <div className="flex items-center justify-between bg-[#1e293b] border border-blue-500/40 rounded px-3 py-2 text-xs font-mono text-slate-100">
+                    <span>Case #{linkedCase.caseNo}</span>
+                    <button type="button" onClick={() => { setLinkedCase(null); setCaseSearch(""); }} className="text-slate-400 hover:text-slate-200">Remove link</button>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      value={caseSearch}
+                      onChange={(e) => setCaseSearch(e.target.value)}
+                      placeholder="Search by case number or words in the facts (leave empty for a general directive)"
+                      className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                    {(caseMatches?.data ?? []).length > 0 && (
+                      <div className="bg-[#0d1322] border border-[#334155] rounded max-h-40 overflow-y-auto divide-y divide-[#1e293b]">
+                        {caseMatches.data.map((c: any) => (
+                          <button key={c.CaseMasterID} type="button" onClick={() => setLinkedCase({ id: c.CaseMasterID, caseNo: c.CaseNo })}
+                            className="w-full text-left px-3 py-1.5 hover:bg-[#151c2e] text-[11px] text-slate-300">
+                            <span className="font-mono text-blue-400">#{c.CaseNo}</span>
+                            <span className="text-slate-500"> · {c.CrimeRegisteredDate}{c.AIRiskLevel ? ` · ${c.AIRiskLevel} risk` : ""}</span>
+                            <span className="block truncate text-slate-400">{c.BriefFacts}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {caseSearch.trim().length >= 3 && caseMatches && caseMatches.data.length === 0 && <p className="text-[10px] text-slate-500 font-mono">No matching case in your jurisdiction.</p>}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -368,7 +391,7 @@ export default function TaskDelegationModule() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Conduct Precinct Patrol & CCTV Audit at Shorapur"
+                  placeholder="A short title for the directive"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500"
@@ -505,18 +528,15 @@ export default function TaskDelegationModule() {
                           onChange={(e) => setEvidenceType(e.target.value)}
                           className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-2.5 py-1 font-mono"
                         >
-                          <option value="CCTV Footage">📹 CCTV Surveillance Footage</option>
-                          <option value="Seizure Memo">📜 Physical Seizure Memo</option>
-                          <option value="Forensic DNA Report">🧪 Forensic DNA & Lab Sample</option>
-                          <option value="Recovered Weapon">🔪 Recovered Sharp Dagger / Weapon</option>
-                          <option value="Digital Telemetry">📱 Mobile Tower / Call Telemetry</option>
+                          <option value="" disabled>Select a type</option>
+                          {reference.vocabulary.evidence_type.map((x) => <option key={x} value={x}>{x}</option>)}
                         </select>
                       </div>
                       <div>
                         <label className="block text-[10px] font-mono text-slate-400 uppercase font-bold mb-1">Evidence Description</label>
                         <input
                           type="text"
-                          placeholder="e.g. Recovered DVR recorder unit #460"
+                          placeholder="What was collected, from where"
                           value={evidenceDesc}
                           onChange={(e) => setEvidenceDesc(e.target.value)}
                           className="w-full bg-[#1e293b] border border-[#334155] text-slate-100 text-xs rounded px-2.5 py-1"

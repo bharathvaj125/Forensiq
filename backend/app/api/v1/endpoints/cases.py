@@ -1,9 +1,12 @@
+from datetime import datetime, time
+
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.dependencies import get_db, get_current_active_user
 from app.core.permissions import verify_permission
+from app.middleware.jurisdiction_scope import STATEWIDE_ROLES
 from app.models.user import User
 
 # CRUD and Services
@@ -12,7 +15,7 @@ from app.services import case_service, witness_service, annotation_service, assi
 from app.utils.pagination import paginate
 
 # Pydantic Schemas
-from app.schemas.case_master import CaseMaster, CaseMasterCreate, PaginatedCaseResponse
+from app.schemas.case_master import CaseMaster, CaseRegistration, PaginatedCaseResponse
 from app.schemas.witness import Witness, WitnessCreate
 from app.schemas.case import CaseAnnotation, AnnotationCreate
 from app.schemas.officer import CaseAssignment, AssignmentCreate
@@ -28,7 +31,10 @@ def read_cases(
     district_id: Optional[int] = Query(None, alias="districtId", description="Filter by District ID"),
     station_id: Optional[int] = Query(None, alias="stationId", description="Filter by Police Station ID"),
     status_id: Optional[int] = Query(None, alias="statusId", description="Filter by Case Status ID"),
-    sort_by: Optional[str] = Query(None, alias="sortBy", description="Sorting criterion (date_desc, date_asc, priority_desc, risk_desc)"),
+    sort_by: Optional[str] = Query(None, alias="sortBy", description="Sorting criterion (date_desc, date_asc, priority_desc, risk_desc, risk_asc)"),
+    risk_level: Optional[str] = Query(None, alias="riskLevel", description="Comma-separated model risk levels, e.g. High,Severe"),
+    status_group: Optional[str] = Query(None, alias="statusGroup", description="open, closed, investigation, chargesheet, trial or convicted"),
+    crime_category: Optional[str] = Query(None, alias="crimeCategory", description="Crime head id or name fragment"),
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:read"))
 ):
@@ -46,13 +52,14 @@ def read_cases(
         district_id=district_id,
         station_id=station_id,
         status_id=status_id,
-        sort_by=sort_by
+        sort_by=sort_by,
+        risk_levels=[v.strip().capitalize() for v in risk_level.split(",") if v.strip()] if risk_level else None,
+        status_group=status_group,
+        crime_category=crime_category,
     )
     
     # Extract roles to display dynamic scopes (Statewide vs station-bounded)
-    applied_scope = "Statewide"
-    if current_user.role and current_user.role.RoleName not in ["Admin", "SCRB_Officer", "SHO", "Constable"]:
-        applied_scope = "Jurisdiction Bounded"
+    applied_scope = "Statewide" if current_user.role and current_user.role.RoleName in STATEWIDE_ROLES else "Jurisdiction Bounded"
 
     return paginate(db_cases, total_count, page, page_size, applied_scope)
 
@@ -63,7 +70,7 @@ def get_districts_and_stations(
     current_user: User = Depends(verify_permission("cases:read")),
 ):
     """
-    Returns all 31 Karnataka Districts and their associated Police Stations directly from PostgreSQL.
+    Returns every district and its police stations from the database.
     """
     from app.models.district import District
     from app.models.police_station import PoliceStation
@@ -136,6 +143,57 @@ def _accessible_case_or_404(db: Session, case_id: int, current_user: User):
     return case
 
 
+@router.get("/{case_id}/timeline", summary="Chronology of a case built from its records and the audit trail")
+def case_timeline(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(verify_permission("cases:read"))):
+    """Every dated fact held about the case, oldest first: the incident, FIR registration, status changes and other
+    audited actions, investigator assignments, evidence collection, witness statements and officer notes."""
+    from app.models.audit_log import AuditLog
+    from app.services import reference_data
+
+    case = _accessible_case_or_404(db, case_id, current_user)
+    events: list[dict] = []
+
+    def add(when, kind, title, detail=None, actor=None):
+        if when is not None:
+            if not isinstance(when, datetime):  # dates carry no time: place them at the start of the day
+                when = datetime.combine(when, time.min)
+            events.append({"at": when.replace(tzinfo=None).isoformat(), "kind": kind, "title": title, "detail": detail, "actor": actor})
+
+    add(case.IncidentFromDate, "incident", "Incident occurred", f"Until {case.IncidentToDate:%Y-%m-%d %H:%M}" if case.IncidentToDate and case.IncidentToDate != case.IncidentFromDate else None)
+    add(case.InfoReceivedPSDate, "report", "Information received at the police station")
+    registered = datetime.combine(case.CrimeRegisteredDate, time.min) if case.CrimeRegisteredDate else None
+    if registered and case.InfoReceivedPSDate:
+        registered = max(registered, case.InfoReceivedPSDate.replace(tzinfo=None))  # an FIR follows the report it records
+    add(registered, "fir", "FIR registered", f"FIR {case.CaseNo}")
+
+    status_names = reference_data.status_names(db)
+    audit_rows = db.query(AuditLog, User.Username).outerjoin(User, User.UserID == AuditLog.UserID).filter(
+        AuditLog.ResourceID == str(case_id), AuditLog.ModuleName == "Case Manager").order_by(AuditLog.Timestamp).all()
+    for entry, username in audit_rows:
+        if entry.Action == "UPDATE_CASE_STATUS":
+            old = status_names.get(int(entry.OldValue)) if entry.OldValue and str(entry.OldValue).isdigit() else entry.OldValue
+            new = status_names.get(int(entry.NewValue)) if entry.NewValue and str(entry.NewValue).isdigit() else entry.NewValue
+            add(entry.Timestamp, "status", f"Status changed to {new}", f"From {old}", username)
+        elif entry.Action != "CREATE_CASE":
+            add(entry.Timestamp, "audit", entry.Action.replace("_", " ").title(), entry.NewValue, username)
+
+    from app.models.officer import Officer
+    officers = {o.OfficerID: o for o in db.query(Officer).filter(Officer.OfficerID.in_([a.OfficerID for a in case.assignments])).all()} if case.assignments else {}
+    for assignment in case.assignments:
+        officer = officers.get(assignment.OfficerID)
+        who = f"{officer.Name} ({officer.Rank})" if officer and officer.Name else f"Officer #{assignment.OfficerID}"
+        add(assignment.AssignedDate, "assignment", f"{who} assigned as {assignment.AssignmentRole}")
+        add(assignment.UnassignedDate, "assignment", f"{who} released from the case")
+    for item in case.evidence_items:
+        add(item.CollectionDate, "evidence", f"Evidence collected: {item.EvidenceType}", item.Description)
+    for annotation in case.annotations:
+        if not annotation.IsDeleted:
+            add(annotation.CreatedAt, "note", f"Note: {annotation.Category}", annotation.NotesText)
+
+    events.sort(key=lambda event: event["at"])
+    return {"case_id": case_id, "events": events}
+
+
 @router.get("/{case_id}/accused", response_model=list[dict], summary="List Case Accused")
 def list_case_accused(case_id: int, db: Session = Depends(get_db), current_user: User = Depends(verify_permission("cases:read"))):
     """Return accused profiles attached to an accessible case file."""
@@ -173,13 +231,13 @@ def list_case_witnesses(case_id: int, db: Session = Depends(get_db), current_use
 
 @router.post("", response_model=CaseMaster, status_code=status.HTTP_201_CREATED, summary="Register Case")
 def create_new_case(
-    case_in: CaseMasterCreate,
+    case_in: CaseRegistration,
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:create"))
 ):
     """
-    Registers a new crime case file registry entry.
-    Verifies that latitude and longitude coordinates fall within geographical state limits.
+    Registers an FIR. The server assigns the case/crime numbers, registration date, initial status and registering
+    officer when they are not supplied; the accused, victims, witnesses and vehicles listed are saved with it.
     """
     return case_service.register_new_case(db, case_in.model_dump(), current_user)
 

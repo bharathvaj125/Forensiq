@@ -23,6 +23,9 @@ export const authService = {
       },
     });
   },
+  async changePassword(currentPassword: string, newPassword: string) {
+    await apiClient.post("/auth/change-password", { CurrentPassword: currentPassword, NewPassword: newPassword });
+  },
   async getMe() {
     const response = await apiClient.get("/auth/me");
     return response.data;

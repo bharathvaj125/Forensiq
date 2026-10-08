@@ -11,3 +11,4 @@ class AssistantQueryResponse(BaseModel):
     source_case_ids: List[int]
     model_version: str
     download_url: Optional[str] = None
+    tools_used: List[str] = []

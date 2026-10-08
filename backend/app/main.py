@@ -83,6 +83,13 @@ async def lifespan(app: FastAPI):
             except Exception as alter_err:
                 logger.error(f"EXCEPTION in ALTER TABLE:\n{traceback.format_exc()}")
 
+        # Columns added to existing tables after first deploy (create_all never alters existing tables).
+        try:
+            from app.db.migrations import ensure_columns
+            ensure_columns(engine)
+        except Exception:
+            logger.error(f"EXCEPTION adding new columns:\n{traceback.format_exc()}")
+
         logger.info("START: Remaining initialization")
         import threading
         def run_background_seed():
@@ -92,11 +99,11 @@ async def lifespan(app: FastAPI):
                     seed_database(db)
                     logger.info("✓ Seed Complete")
                     try:
-                        from backfill_risk_scores import backfill_all_risk_scores
-                        backfill_all_risk_scores()
-                        logger.info("✓ AI Risk Scores Backfill Complete")
-                    except Exception as bf_err:
-                        logger.error(f"Backfill notice: {bf_err}")
+                        from app.services import risk_service
+                        rescored = risk_service.ensure_scores_current(db)
+                        logger.info(f"✓ AI risk scores current ({rescored} cases re-scored)")
+                    except Exception:
+                        logger.error(f"Risk scoring at startup failed:\n{traceback.format_exc()}")
                     logger.info("✓ AI Ready")
                     logger.info("✓ Backend Ready")
                 finally:
@@ -118,7 +125,7 @@ import os
 from app.core.dependencies import rate_limit_dependency
 
 app = FastAPI(
-    title="KSP Crime Intelligence & Investigation Platform",
+    title="Forensiq - AI Crime Intelligence Platform API",
     description="Core Backend API handling cases, network graph analytics, hotspots, and user RBAC.",
     version="1.0.0",
     dependencies=[Depends(rate_limit_dependency)],
@@ -154,15 +161,15 @@ os.makedirs(os.path.join(UPLOADS_DIR, "evidence"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Centralized exception handling
-from app.core.exceptions import KSPException
+from app.core.exceptions import ForensiqException
 from sqlalchemy.exc import IntegrityError
 from fastapi.exceptions import RequestValidationError
 from app.core.handlers import (
-    ksp_exception_handler, db_integrity_error_handler,
+    forensiq_exception_handler, db_integrity_error_handler,
     validation_exception_handler, unhandled_exception_handler
 )
 
-app.add_exception_handler(KSPException, ksp_exception_handler)
+app.add_exception_handler(ForensiqException, forensiq_exception_handler)
 app.add_exception_handler(IntegrityError, db_integrity_error_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
@@ -173,11 +180,11 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/")
 def root():
     """
-    Root endpoint for cloud platform (Catalyst AppSail) health checks.
+    Liveness endpoint for the hosting platform.
     """
     return {
         "status": "online",
-        "service": "KSP Crime Intelligence Platform API Backend",
+        "service": "Forensiq API",
         "version": "1.0.0"
     }
 
@@ -194,7 +201,10 @@ def health_check(db: Session = Depends(get_db)):
         logger.warning(f"Database health check warning: {e}")
         db_status = "degraded"
 
+    from app.db import session as db_session
+    fallback = db_session.DB_FALLBACK_ACTIVE
     return {
-        "status": "online",
-        "database": db_status
+        "status": "degraded" if fallback else "online",
+        "database": "fallback-sqlite" if fallback else db_status,
+        "dialect": engine.dialect.name
     }

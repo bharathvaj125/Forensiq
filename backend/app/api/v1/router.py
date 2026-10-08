@@ -3,7 +3,7 @@ from app.api.v1.endpoints import (
     cases, auth, network, admin, officers,
     audit, search, hotspot, intelligence,
     assistant, collaboration, notifications, reports,
-    predictive, task_delegation, court
+    predictive, task_delegation, court, dashboard, reference
 )
 
 api_router = APIRouter()
@@ -25,4 +25,6 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(predictive.router, prefix="/predictive", tags=["predictive"])
 api_router.include_router(task_delegation.router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(court.router, prefix="/court", tags=["court"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(reference.router, prefix="/reference", tags=["reference"])
 

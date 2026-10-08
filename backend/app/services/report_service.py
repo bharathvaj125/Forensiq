@@ -68,7 +68,8 @@ def get_report_job(db: Session, report_job_id: int, current_user: User) -> Repor
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report job not found.")
     
     # Verify user owns the job or has access to target case
-    if report_job.CreatedBy and report_job.CreatedBy != current_user.UserID and current_user.Role != "Admin":
+    is_admin = bool(current_user.role and current_user.role.RoleName == "Admin")
+    if report_job.CreatedBy and report_job.CreatedBy != current_user.UserID and not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. This report was requested by another officer.")
 
     case_query = db.query(CaseMaster).filter(CaseMaster.CaseMasterID == report_job.CaseMasterID)

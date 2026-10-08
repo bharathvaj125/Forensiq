@@ -21,6 +21,10 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
 
+class PasswordChange(BaseModel):
+    CurrentPassword: str
+    NewPassword: str
+
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
 
@@ -41,6 +45,9 @@ class UserOut(BaseModel):
     IsActive: bool
     CreatedAt: datetime
     role: Optional[RoleOut] = None
+    Permissions: list[str] = []
+    ScopeLevel: Optional[str] = None
+    ScopeDescription: Optional[str] = None
 
     class Config:
         from_attributes = True

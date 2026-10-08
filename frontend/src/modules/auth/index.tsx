@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/providers/AuthProvider";
 import { Lock, User, AlertCircle, ShieldCheck, ArrowRight, Eye, EyeOff, KeyRound, Fingerprint } from "lucide-react";
@@ -11,6 +11,17 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
+
+  // Free hosting puts the API to sleep when idle; the first request then takes up to a minute. Say so instead of spinning silently.
+  useEffect(() => {
+    if (!loading) {
+      setSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setSlow(true), 6000);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,13 +31,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(username, password);
-      const u = username.toLowerCase();
-      if (u.includes("cbi") || u.includes("fsl") || u.includes("ed")) {
-        navigate("/collaboration");
-      } else {
-        navigate("/dashboard");
-      }
+      const { user } = await login(username, password);
+      // External agency officers have no operational dashboard; they land on the inter-agency vault.
+      navigate(user.role?.RoleName === "ExternalAgencyOfficer" ? "/collaboration" : "/dashboard");
     } catch (err: any) {
       console.error("Login error details:", err);
       const detail = err.response?.data?.detail;
@@ -80,6 +87,12 @@ export default function Login() {
             </p>
           </div>
         </div>
+
+        {loading && slow && (
+          <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 p-3 rounded-xl text-xs leading-relaxed font-mono">
+            The server is waking up after being idle. This can take up to a minute; please keep this page open.
+          </div>
+        )}
 
         {/* Error Notification Bar */}
         {error && (

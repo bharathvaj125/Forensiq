@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { reportService } from "../../services/reportService";
+import { caseService } from "../../services/caseService";
 import { FileText, Download, CheckCircle, Eye, X } from "lucide-react";
 import { useLanguage } from "../../app/providers/LanguageContext";
 
@@ -11,6 +12,25 @@ export default function Reports() {
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState<string>("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  // The spreadsheet / Word exports are per case: accept a case id or a case number and resolve it to the case's id.
+  const exportCase = async (kind: "excel" | "docx") => {
+    setMessage(null);
+    const text = caseInput.trim();
+    if (!text) { setMessage("Enter a case id or case number first."); return; }
+    try {
+      let caseId = /^\d{1,6}$/.test(text) ? Number(text) : null;
+      if (caseId === null) {
+        const found = await caseService.getCases({ search: text, pageSize: 5 });
+        caseId = found.data?.find((c: any) => String(c.CaseNo) === text)?.CaseMasterID ?? null;
+      }
+      if (caseId === null) { setMessage("No case in your jurisdiction matches that number."); return; }
+      await (kind === "excel" ? reportService.downloadExcel(caseId) : reportService.downloadDocx(caseId));
+    } catch (err: any) {
+      setMessage(err?.response?.status === 404 ? "That case was not found or you cannot access it." : "The export could not be created.");
+    }
+  };
 
   // Fetch report logs history
   const { data: historyData, isLoading } = useQuery({
@@ -26,7 +46,7 @@ export default function Reports() {
       setDownloadingId(reportJobId);
       await reportService.downloadReportPdf(reportJobId, caseMasterId);
     } catch (err) {
-      alert("Failed to download PDF report file.");
+      setMessage("The PDF could not be downloaded; it may still be compiling or you may not have access.");
     } finally {
       setDownloadingId(null);
     }
@@ -39,7 +59,7 @@ export default function Reports() {
       setPreviewBlobUrl(blobUrl);
       setPreviewTitle(`Case Dossier #${caseMasterId}`);
     } catch (err) {
-      alert("Failed to load PDF preview.");
+      setMessage("The PDF preview could not be loaded.");
     }
   };
 
@@ -49,14 +69,14 @@ export default function Reports() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["reportHistory"] });
       setCaseInput("");
+      setMessage(null);
       
       if (data?.ReportJobID) {
         handleDownload(data.ReportJobID, data.CaseMasterID);
       }
     },
     onError: (err: any) => {
-      const detail = err?.response?.data?.detail || "Failed to compile dossier. Please verify the Case ID or Case Number.";
-      alert(detail);
+      setMessage(err?.response?.data?.detail || "The dossier could not be compiled. Check the case id or case number.");
     }
   });
 
@@ -74,7 +94,7 @@ export default function Reports() {
             {t("COMPILE DOSSIER")}
           </h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            {t("Enter a Case Master ID (e.g. 1, 4823) or Case Number (e.g. 202600006). The platform will extract incident facts, evidence items, victims, accused profiles, vehicle logs, and AI risk metrics into a downloadable PDF.")}
+            {t("Enter a case id or case number. The platform compiles the incident facts, evidence, victims, accused, vehicles and the risk assessment into a downloadable PDF.")}
           </p>
 
           <form
@@ -87,6 +107,7 @@ export default function Reports() {
             }}
             className="space-y-3 pt-2"
           >
+            {message && <div className="bg-red-500/10 border border-red-500/30 text-red-300 text-xs rounded p-2.5 font-mono">{message}</div>}
             <div>
               <label className="block text-[10px] uppercase font-mono tracking-wider text-slate-500 mb-1">
                 {t("CASE ID OR CASE NUMBER")}
@@ -96,7 +117,7 @@ export default function Reports() {
                 value={caseInput}
                 onChange={(e) => setCaseInput(e.target.value)}
                 required
-                placeholder="e.g. 202600006 or 1"
+                placeholder="A case id or case number"
                 className="w-full bg-[#1e293b] border border-[#1e293b] text-slate-200 text-xs rounded px-3 py-2 focus:outline-none focus:border-blue-500 font-mono"
               />
             </div>
@@ -122,7 +143,7 @@ export default function Reports() {
 
           {/* Quick Dataset Exports */}
           <div className="border-t border-[#1e293b] pt-4 space-y-2">
-            <h4 className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Multi-Format Dataset Exports</h4>
+            <h4 className="text-[10px] font-mono text-slate-400 uppercase tracking-wider font-bold">Exports: CSV = every case in your jurisdiction; XLS / DOCX = the case entered above</h4>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -133,14 +154,14 @@ export default function Reports() {
               </button>
               <button
                 type="button"
-                onClick={() => reportService.downloadExcel(Number(caseInput) || 1)}
+                onClick={() => exportCase("excel")}
                 className="bg-[#1e293b] hover:bg-slate-700 text-blue-400 border border-blue-500/30 rounded py-1.5 px-2 text-[11px] font-mono font-bold flex items-center justify-center gap-1 transition-colors"
               >
                 <span>XLS</span>
               </button>
               <button
                 type="button"
-                onClick={() => reportService.downloadDocx(Number(caseInput) || 1)}
+                onClick={() => exportCase("docx")}
                 className="bg-[#1e293b] hover:bg-slate-700 text-indigo-400 border border-indigo-500/30 rounded py-1.5 px-2 text-[11px] font-mono font-bold flex items-center justify-center gap-1 transition-colors"
               >
                 <span>DOCX</span>
@@ -156,7 +177,7 @@ export default function Reports() {
               <FileText className="text-blue-400" size={14} />
               <span>{t("COMPILED EXECUTIVE DOSSIERS")}</span>
             </h3>
-            <span className="text-[10px] text-slate-500 font-mono">{t("Official Judicial Registry Files")}</span>
+            <span className="text-[10px] text-slate-500 font-mono">{t("Your compiled dossiers")}</span>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">

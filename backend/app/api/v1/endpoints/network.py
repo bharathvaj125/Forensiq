@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
 from app.core.permissions import verify_permission
@@ -51,11 +51,13 @@ def get_graph(
 
 @router.get("/gangs", response_model=GangCommunityResponse, summary="Detect Criminal Communities")
 def get_gangs(
+    min_size: int = Query(network_service.MIN_NETWORK_SIZE, ge=2, le=50, alias="minSize"),
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:read")),
 ):
-    """Return communities inferred only from relationship edges visible to the caller."""
-    return network_service.get_gang_communities(db, current_user)
+    """Networks of linked repeat offenders (co-accused, shared vehicles, same home district,
+    recorded links and registry gang membership) within the caller's jurisdiction."""
+    return network_service.get_gang_communities(db, current_user, min_size=min_size)
 
 @router.post("/relationships", response_model=CriminalRelationship, status_code=status.HTTP_201_CREATED, summary="Establish Suspect Link")
 def establish_link(

@@ -119,4 +119,6 @@ def process_assistant_query(
         db=db,
         current_user=current_user,
         query_text=body.query,
+        district_id=body.district_id,
+        station_id=body.station_id,
     )

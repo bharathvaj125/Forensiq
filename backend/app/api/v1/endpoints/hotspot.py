@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -7,103 +7,58 @@ from app.core.permissions import verify_permission
 from app.models.user import User
 from app.models.case_master import CaseMaster
 from app.middleware.jurisdiction_scope import apply_jurisdiction_filter
-from app.schemas.hotspot import HotspotResponse, HotspotPoint, PredictedHotspotResponse
-from app.services import hotspot_service
+from app.schemas.hotspot import HotspotResponse, HotspotPoint, MapLayersResponse, PredictedHotspotResponse
+from app.services import analytics, hotspot_service, reference_data
+from app.services.case_filters import apply_case_filters
 
 router = APIRouter()
 
 
+@router.get("/layers", response_model=MapLayersResponse, summary="Districts, stations and crime types for the map filters")
+def get_map_layers(db: Session = Depends(get_db), current_user: User = Depends(verify_permission("cases:read"))):
+    """Built from the caller's geocoded cases, so the filters only offer places and crime types that have data."""
+    return hotspot_service.get_map_layers(db, current_user)
+
+
 @router.get("/predicted", response_model=PredictedHotspotResponse, summary="Get Predicted Crime Hotspots")
 def get_predicted_hotspots(
+    district_id: Optional[int] = Query(None, alias="districtId"),
+    station_id: Optional[int] = Query(None, alias="stationId"),
+    crime_type: Optional[str] = Query(None, alias="crimeType", description="Crime head id or name fragment"),
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:read")),
 ):
-    """Return explainable KDE predictions only for the caller's visible jurisdiction."""
-    return hotspot_service.get_predicted_hotspots(db, current_user)
+    """KDE hotspots over the geocoded cases in the caller's jurisdiction."""
+    return hotspot_service.get_predicted_hotspots(db, current_user, district_id=district_id, station_id=station_id,
+                                                  crime_category=crime_type)
+
 
 @router.get("", response_model=HotspotResponse, summary="Get Crime Hotspots")
 def get_hotspots(
     district_id: Optional[int] = Query(None, alias="districtId", description="Filter by District ID"),
     station_id: Optional[int] = Query(None, alias="stationId", description="Filter by Police Station ID"),
-    crime_type: Optional[str] = Query(None, alias="crimeType", description="Filter by crime category key"),
-    limit: int = Query(250, ge=1, le=1000, description="Max points to return for fast UI rendering"),
+    crime_type: Optional[str] = Query(None, alias="crimeType", description="Crime head id or name fragment, e.g. 7 or 'cyber'"),
+    limit: int = Query(1000, ge=1, le=2000, description="Max points to return for fast UI rendering"),
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:read"))
 ):
-    """
-    Retrieves coordinate points of active crime cases to construct hotspots and heatmaps.
-    Implicitly filters locations based on row-level officer jurisdiction parameters.
-    """
-    query = db.query(CaseMaster).filter(
-        CaseMaster.latitude != 0.0,
-        CaseMaster.longitude != 0.0
-    )
+    """Coordinates of the highest-risk geocoded cases for maps and heatmaps, within the caller's jurisdiction."""
+    query = db.query(CaseMaster).filter(CaseMaster.latitude != 0.0, CaseMaster.longitude != 0.0,
+                                        CaseMaster.CrimeRegisteredDate <= analytics.as_of_date(db))
     query = apply_jurisdiction_filter(query, db, current_user)
-    
-    if district_id is not None and isinstance(district_id, int):
-        from app.models.police_station import PoliceStation
-        ps_subquery = db.query(PoliceStation.UnitID).filter(PoliceStation.DistrictID == district_id).subquery()
-        query = query.filter(CaseMaster.PoliceStationID.in_(ps_subquery))
+    query = apply_case_filters(query, db, district_id=district_id, station_id=station_id, crime_category=crime_type)
+    total_matching = query.count()
+    cases = query.order_by(CaseMaster.AIRiskScore.desc().nullslast(), CaseMaster.CaseMasterID.desc()).limit(limit).all()
 
-    if station_id is not None and isinstance(station_id, int):
-        query = query.filter(CaseMaster.PoliceStationID == station_id)
-        
-    if crime_type:
-        ckey = crime_type.lower()
-        if ckey == "burglary":
-            query = query.filter(
-                (CaseMaster.BriefFacts.ilike("%burgla%")) | 
-                (CaseMaster.BriefFacts.ilike("%house%")) | 
-                (CaseMaster.BriefFacts.ilike("%lurking%")) | 
-                (CaseMaster.CrimeMajorHeadID == 2)
-            )
-        elif ckey == "theft":
-            query = query.filter(
-                (CaseMaster.BriefFacts.ilike("%theft%")) | 
-                (CaseMaster.BriefFacts.ilike("%vehicle%")) | 
-                (CaseMaster.BriefFacts.ilike("%stolen%")) | 
-                (CaseMaster.CrimeMajorHeadID == 2)
-            )
-        elif ckey == "cyber":
-            query = query.filter(
-                (CaseMaster.BriefFacts.ilike("%cyber%")) | 
-                (CaseMaster.BriefFacts.ilike("%bank%")) | 
-                (CaseMaster.BriefFacts.ilike("%fraud%")) | 
-                (CaseMaster.CrimeMajorHeadID == 7)
-            )
-        elif ckey == "assault":
-            query = query.filter(
-                (CaseMaster.BriefFacts.ilike("%assault%")) | 
-                (CaseMaster.BriefFacts.ilike("%robbery%")) | 
-                (CaseMaster.BriefFacts.ilike("%murder%")) | 
-                (CaseMaster.CrimeMajorHeadID == 1)
-            )
-        elif ckey == "women":
-            query = query.filter(
-                (CaseMaster.BriefFacts.ilike("%dowry%")) | 
-                (CaseMaster.BriefFacts.ilike("%molest%")) | 
-                (CaseMaster.BriefFacts.ilike("%rape%")) | 
-                (CaseMaster.CrimeMajorHeadID == 3)
-            )
-        elif ckey == "narcotics":
-            query = query.filter(
-                (CaseMaster.BriefFacts.ilike("%ganja%")) | 
-                (CaseMaster.BriefFacts.ilike("%ndps%")) | 
-                (CaseMaster.CrimeMajorHeadID == 8)
-            )
-
-    query = query.order_by(CaseMaster.AIRiskScore.desc(), CaseMaster.CaseMasterID.desc()).limit(limit)
-    cases = query.all()
-
-    # Attach district and station names
     from app.crud.case_crud import _attach_district_info
     _attach_district_info(db, cases)
+    crime_names = reference_data.crime_head_names(db)
 
     points = [
         HotspotPoint(
             latitude=case.latitude,
             longitude=case.longitude,
-            weight=float(case.AIRiskScore or 1.0),
+            weight=float(case.AIRiskScore) if case.AIRiskScore is not None else None,
             BriefFacts=case.BriefFacts,
             CaseNo=case.CaseNo,
             CaseMasterID=case.CaseMasterID,
@@ -111,12 +66,11 @@ def get_hotspots(
             PoliceStationID=case.PoliceStationID,
             PoliceStationName=getattr(case, "PoliceStationName", None),
             CrimeHeadID=getattr(case, "CrimeMajorHeadID", None),
-            AIRiskScore=float(case.AIRiskScore or 0.0),
+            CrimeHeadName=crime_names.get(case.CrimeMajorHeadID),
+            AIRiskScore=float(case.AIRiskScore) if case.AIRiskScore is not None else None,
+            AIRiskLevel=case.AIRiskLevel,
             IncidentFromDate=case.IncidentFromDate.isoformat() if case.IncidentFromDate else None
         )
         for case in cases
     ]
-    return HotspotResponse(
-        points=points,
-        total_points=len(points)
-    )
+    return HotspotResponse(points=points, total_points=len(points), total_matching=total_matching)

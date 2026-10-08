@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
+from sqlalchemy import BigInteger, Column, Integer, String, Text, DateTime, JSON
 from app.db.base_class import Base
 from datetime import datetime
 
@@ -6,6 +6,7 @@ class CourtCase(Base):
     __tablename__ = "court_cases"
 
     CourtCaseID = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    CaseMasterID = Column(BigInteger, index=True, nullable=True)  # the FIR this hearing record belongs to
     CaseNo = Column(String(100), unique=True, index=True, nullable=False)
     FIRNo = Column(String(100), index=True)
     DistrictName = Column(String(100))

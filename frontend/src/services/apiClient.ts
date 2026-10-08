@@ -5,10 +5,11 @@ const getApiBaseUrl = () => {
   if (envUrl && envUrl.trim() !== "" && envUrl.startsWith("http")) {
     return envUrl;
   }
-  return "https://ksp-docker-backend-50044331349.development.catalystappsail.in/api/v1";
+  // No build-time URL: assume the API is served from the same origin (a reverse proxy in front of both).
+  return "/api/v1";
 };
 
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBaseUrl();
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

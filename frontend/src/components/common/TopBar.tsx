@@ -5,6 +5,8 @@ import { notificationService } from "../../services/notificationService";
 import { searchService } from "../../services/searchService";
 import { Bell, Search, CheckCircle, Clock } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import PasswordDialog from "./PasswordDialog";
+import { authService } from "../../services/authService";
 
 export default function TopBar() {
   const { user } = useAuth();
@@ -19,6 +21,7 @@ export default function TopBar() {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -333,7 +336,12 @@ export default function TopBar() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 border-l border-[#1e293b] pl-6">
+        <button
+          type="button"
+          onClick={() => setShowPasswordDialog(true)}
+          title={t("Change password", "ಪಾಸ್‌ವರ್ಡ್ ಬದಲಿಸಿ")}
+          className="flex items-center gap-2 border-l border-[#1e293b] pl-6 text-left focus:outline-none"
+        >
           <div className="text-right">
             <span className="block text-xs font-bold text-slate-200">{user?.Username}</span>
             <span className="text-[10px] text-slate-500 font-mono tracking-wider uppercase">
@@ -343,8 +351,17 @@ export default function TopBar() {
           <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-700 to-indigo-900 border border-blue-500/30 flex items-center justify-center font-bold text-xs text-white">
             {user?.Username?.substring(0, 2).toUpperCase() || "SI"}
           </div>
-        </div>
+        </button>
       </div>
+
+      {showPasswordDialog && (
+        <PasswordDialog
+          title={t("Change password", "ಪಾಸ್‌ವರ್ಡ್ ಬದಲಿಸಿ")}
+          askCurrent
+          onSubmit={(current, next) => authService.changePassword(current, next)}
+          onClose={() => setShowPasswordDialog(false)}
+        />
+      )}
 
       {showWalkthrough && (
         <div className="fixed right-4 top-20 w-80 bg-[#0d1322] border border-[#1e293b] rounded shadow-2xl p-5 z-50 animate-slide-in select-none">
@@ -363,10 +380,10 @@ export default function TopBar() {
 
           <div className="space-y-3.5">
             {[
-              { title: "Landing Page: AI Briefing", desc: "Showcase live situation briefings, critical alert lists, and operational health.", target: "/dashboard" },
-              { title: "GIS Mapping: Hotspot Playback", desc: "Open the GIS map, drag the playback slider to watch hotspots shift.", target: "/map" },
-              { title: "Investigation: pgvector Similarities", desc: "Check dossier indexes and trigger side-by-side similarities.", target: "/cases" },
-              { title: "Accused Networks: Louvain Clusters", desc: "Animate suspect relationships and highlight linked communities.", target: "/network" },
+              { title: "Command Center", desc: "Situation briefing, alerts and recommended actions, all computed from the case database.", target: "/dashboard" },
+              { title: "GIS Map & Hotspots", desc: "Filter FIRs by district, station and crime type; KDE hotspots with the evidence behind each.", target: "/map" },
+              { title: "Case Registry & Similar Cases", desc: "Open a case to see its risk drivers, linked accused and semantically similar FIRs (pgvector).", target: "/cases" },
+              { title: "Accused Networks", desc: "Repeat offenders linked by co-accused, shared vehicles and home district, grouped into communities.", target: "/network" },
             ].map((step, idx) => (
               <div
                 key={idx}

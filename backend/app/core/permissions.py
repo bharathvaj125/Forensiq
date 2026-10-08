@@ -47,3 +47,16 @@ def verify_permission(permission_code: str):
             )
         return current_user
     return dependency
+
+
+def permissions_for_user(db: Session, user: User) -> list[str]:
+    """Every permission code the user's role grants (mirrors has_permission's rules)."""
+    if not user.RoleID:
+        return []
+    if user.RoleID == 1 or (user.role and user.role.RoleName == "Admin"):
+        return sorted(code for (code,) in db.query(Permission.PermissionCode).all())
+    codes = {code for (code,) in db.query(Permission.PermissionCode).join(
+        RolePermission, RolePermission.PermissionID == Permission.PermissionID).filter(RolePermission.RoleID == user.RoleID).all()}
+    if user.role and user.role.RoleName == "ExternalAgencyOfficer":
+        codes |= {code for (code,) in db.query(Permission.PermissionCode).all() if "read" in code}
+    return sorted(codes)

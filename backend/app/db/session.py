@@ -58,7 +58,11 @@ except Exception as dns_err:
     logger.error("Exception type: %s", type(dns_err))
     logger.error("Exception repr: %r", dns_err)
 
+DB_FALLBACK_ACTIVE = False
+
+
 def create_resilient_db_engine():
+    global DB_FALLBACK_ACTIVE
     if db_url.startswith("sqlite"):
         logger.info(f"Initializing SQLite Database Engine: {db_url}")
         return create_engine(db_url, connect_args={"check_same_thread": False})
@@ -91,6 +95,7 @@ def create_resilient_db_engine():
         
         logger.warning("Falling back to local SQLite engine to guarantee container stability, live logging, and login functionality.")
         fallback_path = os.path.join(BASE_DIR, "ksp_crime_intel.db")
+        DB_FALLBACK_ACTIVE = True
         return create_engine(f"sqlite:///{fallback_path}", connect_args={"check_same_thread": False})
 
 engine = create_resilient_db_engine()

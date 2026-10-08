@@ -2,12 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from typing import List
 
 from app.core.dependencies import get_db
 from app.core.permissions import verify_permission
 from app.models.user import User
-from app.models.report_job import ReportJob
 from app.crud import case_crud
 from app.schemas.report import ReportSummary, ReportJobOut, ReportHistoryResponse
 from app.services import report_service
@@ -91,13 +89,15 @@ def get_report_job_status(
 @router.get("/jobs/{report_job_id}/download", summary="Download PDF Report")
 def download_pdf_report(
     report_job_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(verify_permission("cases:read"))
 ):
     """
-    Downloads the compiled PDF bytes. Bypass strict auth scopes to allow simple href downloads.
+    Downloads the compiled PDF bytes. The caller must be allowed to see the report's case; the frontend
+    fetches this with its bearer token and saves the blob.
     """
-    job = db.query(ReportJob).filter(ReportJob.ReportJobID == report_job_id).first()
-    if not job or not job.PDFBytes:
+    job = report_service.get_report_job(db, report_job_id, current_user)  # raises 404/403 on missing job or no access
+    if not job.PDFBytes:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="PDF report file is not ready or does not exist."

@@ -19,6 +19,8 @@ from app.core.security import hash_password
 from app.models.role import Role
 from app.models.permission import Permission
 from app.models.role_permission import RolePermission
+from app.db.data_repair import purge_generated_notifications, remove_fictional_court_cases
+from app.db.seed_parsing import parse_flag, parse_gender, parse_id_suffix
 
 logger = logging.getLogger("ksp_backend")
 
@@ -176,8 +178,9 @@ def map_case_master(row):
         latitude=parse_float(row['latitude']),
         longitude=parse_float(row['longitude']),
         BriefFacts=row['BriefFacts'],
-        InvestigationPriority="High" if row.get('RiskLabel') == "High" else ("Low" if row.get('RiskLabel') == "Low" else "Medium"),
-        AIRiskScore=0.85 if row.get('RiskLabel') == "High" else (0.25 if row.get('RiskLabel') == "Low" else 0.55)
+        # Left unscored: the risk model fills AIRiskScore / AIRiskLevel / InvestigationPriority.
+        InvestigationPriority=None,
+        AIRiskScore=None
     )
 
 def map_accused(row):
@@ -189,18 +192,21 @@ def map_accused(row):
         except ValueError:
             return None
 
+    # The CSV's PersonID is only the accused's slot within a case (A1, A2, ...), not an identity;
+    # the numeric criminal-profile id is the cross-case identity reference.
+    profile_id = parse_id_suffix(row.get('CriminalProfileID'))
     return Accused(
         AccusedMasterID=int(row['AccusedMasterID']),
         CaseMasterID=int(row['CaseMasterID']),
         AccusedName=row['AccusedName'],
         AgeYear=parse_int(row['AgeYear']),
-        GenderID=parse_int(row['GenderID']),
-        PersonID=parse_int(row['PersonID']),
+        GenderID=parse_gender(row.get('GenderID')),
+        PersonID=profile_id,
         Occupation=row['Occupation'],
         Address=row['Address'],
-        CriminalProfileID=parse_int(row['CriminalProfileID']),
-        GangID=parse_int(row['GangID']),
-        IsRepeatOffender=parse_int(row['IsRepeatOffender'])
+        CriminalProfileID=profile_id,
+        GangID=parse_id_suffix(row.get('GangID')),
+        IsRepeatOffender=parse_flag(row.get('IsRepeatOffender'))
     )
 
 def map_victim(row):
@@ -217,14 +223,14 @@ def map_victim(row):
         CaseMasterID=int(row['CaseMasterID']),
         VictimName=row['VictimName'],
         AgeYear=parse_int(row['AgeYear']),
-        GenderID=parse_int(row['GenderID']),
-        VictimPolice=parse_int(row['VictimPolice']),
+        GenderID=parse_gender(row.get('GenderID')),
+        VictimPolice=parse_flag(row.get('VictimPolice')),
         Occupation=row['Occupation'],
         Address=row['Address'],
-        InjurySeverity=row['InjurySeverity'],
+        InjurySeverity=row['InjurySeverity'] or None,
         RelationshipToAccused=row['RelationshipToAccused'],
-        VictimProfileID=parse_int(row['VictimProfileID']),
-        IsRepeatVictim=parse_int(row['IsRepeatVictim'])
+        VictimProfileID=parse_id_suffix(row.get('VictimProfileID')),
+        IsRepeatVictim=parse_flag(row.get('IsRepeatVictim'))
     )
 
 def map_evidence(row):
@@ -361,7 +367,8 @@ def seed_roles_and_permissions(db: Session):
             ("cases:update", "Allow updating existing crime cases."),
             ("cases:delete", "Allow soft deleting crime cases."),
             ("cases:annotate", "Allow writing case journal annotations."),
-            ("users:manage", "Allow managing user accounts, roles, and boundaries.")
+            ("users:manage", "Allow managing user accounts, roles, and boundaries."),
+            ("court:update", "Allow recording court hearing details against a case.")
         ]
 
         perm_map = {}
@@ -375,7 +382,7 @@ def seed_roles_and_permissions(db: Session):
 
         # Role-Permission Mapping
         mappings = [
-            ("SCRB_Officer", ["cases:read"]),
+            ("SCRB_Officer", ["cases:read", "court:update"]),
             ("SHO", ["cases:read", "cases:create", "cases:update", "cases:annotate"]),
             ("Constable", ["cases:read", "cases:annotate"]),
             ("Admin", ["cases:read", "cases:create", "cases:update", "cases:delete", "cases:annotate", "users:manage"]),
@@ -404,7 +411,7 @@ def seed_roles_and_permissions(db: Session):
 
 def seed_users(db: Session):
     """
-    Seeds and permanently updates default officer user accounts dynamically resolving role IDs.
+    Creates the demo officer accounts that are missing (role IDs resolved by name); existing accounts are left alone.
     """
     from app.models.officer import Officer
 
@@ -430,45 +437,52 @@ def seed_users(db: Session):
         ("ed_jd_hegde", "ed@password2026", "hegde@ed.gov.in", ext_role_id, "JD — Enforcement Directorate"),
     ]
 
-    logger.info("Seeding and syncing preset officer user accounts...")
+    logger.info("Seeding preset officer accounts that do not exist yet...")
     try:
+        # Existing accounts are never touched: an administrator's password, role and active-flag changes must survive restarts.
+        override = os.getenv("SEED_USER_PASSWORD", "").strip()
         for username, password, email, role_id, rank_title in preset_users:
-            # Create or update Officer record
-            badge_code = f"KSP-{username.upper()[:6]}"
             off = db.query(Officer).filter(Officer.Name == username).first()
             if not off:
-                off = Officer(BadgeNumber=badge_code, Name=username, Rank=rank_title, AssignedCaseCount=0)
+                off = Officer(BadgeNumber=f"KSP-{username.upper()[:6]}", Name=username, Rank=rank_title, AssignedCaseCount=0)
                 db.add(off)
-                db.commit()
-                db.refresh(off)
-            else:
-                off.Rank = rank_title
-                db.commit()
+                db.flush()
 
-            # Create or permanently update User record
             u = db.query(User).filter(User.Username.ilike(username)).first()
             if not u:
-                u = User(
-                    Username=username,
-                    PasswordHash=hash_password(password),
-                    Email=email,
-                    OfficerID=off.OfficerID if off else None,
-                    RoleID=role_id,
-                    IsActive=True
-                )
-                db.add(u)
-            else:
-                u.PasswordHash = hash_password(password)
-                u.Email = email
-                u.RoleID = role_id
-                if off:
-                    u.OfficerID = off.OfficerID
-                u.IsActive = True
+                db.add(User(Username=username, PasswordHash=hash_password(override or password), Email=email,
+                            OfficerID=off.OfficerID, RoleID=role_id, IsActive=True))
+            elif u.OfficerID is None:
+                u.OfficerID = off.OfficerID
         db.commit()
-        logger.info("Successfully seeded and permanently updated preset officer user accounts!")
+        _post_station_accounts(db)
+        logger.info("Preset officer accounts are in place.")
     except Exception as e:
         db.rollback()
         logger.error(f"Error seeding user accounts: {e}")
+
+
+def _post_station_accounts(db: Session):
+    """A station-level account with no posting sees no cases. Post any such account to the station that has registered the
+    most FIRs (chosen from the data), once; an administrator can move them afterwards."""
+    from sqlalchemy import func
+    from app.models.case_master import CaseMaster
+    from app.models.user_jurisdiction import UserJurisdiction
+    from app.middleware.jurisdiction_scope import STATEWIDE_ROLES
+
+    busiest = db.query(CaseMaster.PoliceStationID).group_by(CaseMaster.PoliceStationID).order_by(func.count().desc()).limit(1).scalar()
+    if not busiest:
+        return
+    for user in db.query(User).all():
+        role = user.role.RoleName if user.role else None
+        if role is None or role in STATEWIDE_ROLES or role == "ExternalAgencyOfficer":
+            continue
+        has_scope = db.query(UserJurisdiction).filter(UserJurisdiction.UserID == user.UserID).first() is not None
+        officer = db.query(Officer).filter(Officer.OfficerID == user.OfficerID).first() if user.OfficerID else None
+        if not has_scope and not (officer and (officer.PoliceStationID or officer.DistrictID)):
+            db.add(UserJurisdiction(UserID=user.UserID, UnitID=busiest, Active=True))
+    db.commit()
+
 
 def reset_db_sequences(db: Session):
     """
@@ -522,169 +536,6 @@ def reset_db_sequences(db: Session):
         logger.info("SQLite dialect active. Auto-increment sequence reset skipped.")
 
 
-from app.models.court_case import CourtCase
-
-def seed_court_cases(db: Session):
-    try:
-        if db.query(CourtCase).first() is not None:
-            logger.info("Table 'court_cases' is already seeded.")
-            return
-    except Exception as e:
-        logger.warning(f"Could not query 'court_cases' table: {e}")
-        db.rollback()
-        return
-
-    logger.info("Seeding 'court_cases' table with Karnataka judicial monitoring records...")
-    cases = [
-        CourtCase(
-            CaseNo="KSP-2026-CT-101",
-            FIRNo="FIR-2025-0841",
-            DistrictName="Bengaluru Urban",
-            PoliceStationName="Vidhana Soudha PS",
-            CourtName="High Court of Karnataka (Bench 4)",
-            JudgeBench="Hon'ble Justice S. N. Patil",
-            PublicProsecutor="Adv. K. M. Nataraj",
-            DefenseCounsel="Adv. B. V. Acharya",
-            TrialStage="Cross Examination of Forensic Witnesses",
-            CaseStatus="Under Trial",
-            NextHearingDate="2026-08-12",
-            OrderNotes="FSL DNA Report marked as Exhibit P-42. Defense requested deferment for cross-examining Cyber Expert.",
-            OffenceSummary="Serial Cyber Fraud & Money Laundering under Sec 303(2) BNS & Sec 66D IT Act",
-            BNSSections="Sec 303(2) BNS, Sec 318 BNS, Sec 66D IT Act",
-            AccusedNames="Ramesh Kumar & 3 Others",
-            ComplainantName="State of Karnataka",
-            Milestones=[
-                {"stage": "FIR & Charge Sheet Submitted", "date": "2025-11-10", "status": "Completed", "note": "Charge Sheet filed under Sec 303(2) BNS & IT Act Sec 66D"},
-                {"stage": "Cognizance & Framing of Charges", "date": "2026-01-15", "status": "Completed", "note": "Court framed charges against 4 accused entities"},
-                {"stage": "Prosecution Evidence Logging", "date": "2026-04-20", "status": "Completed", "note": "P.W. 1 to P.W. 8 examined; 18 digital exhibits marked"},
-                {"stage": "Cross Examination of Forensic Witnesses", "date": "2026-07-20", "status": "In Progress", "note": "FSL DNA Report marked as Exhibit P-42; cross-examination active"}
-            ]
-        ),
-        CourtCase(
-            CaseNo="KSP-2025-CT-084",
-            FIRNo="FIR-2025-0112",
-            DistrictName="Mysuru",
-            PoliceStationName="Devaraja PS",
-            CourtName="IV Additional City Civil & Sessions Court, Mysuru",
-            JudgeBench="Hon'ble Judge R. H. Kalmath",
-            PublicProsecutor="Adv. Ramesh Hegde",
-            DefenseCounsel="Adv. M. S. Naik",
-            TrialStage="Arguments & Final Briefing",
-            CaseStatus="Reserved for Orders",
-            NextHearingDate="2026-08-05",
-            OrderNotes="Arguments concluded by Public Prosecutor. Judgment reserved for August 5, 2026.",
-            OffenceSummary="Armed Robbery & Dacoity Conspiracy under Sec 310 BNS & Arms Act",
-            BNSSections="Sec 310 BNS, Sec 311 BNS, Arms Act Sec 25",
-            AccusedNames="Venkatesh @ Cobra & Gang",
-            ComplainantName="State of Karnataka",
-            Milestones=[
-                {"stage": "Charges Framed", "date": "2025-08-12", "status": "Completed", "note": "Section 310 BNS charges formally framed"},
-                {"stage": "Prosecution Evidence Completed", "date": "2026-02-14", "status": "Completed", "note": "22 prosecution witnesses examined"},
-                {"stage": "Section 313 CrPC / BNSS Statement", "date": "2026-05-18", "status": "Completed", "note": "Accused statements recorded"},
-                {"stage": "Final Arguments Concluded", "date": "2026-07-15", "status": "Completed", "note": "Reserved for Judgment on 2026-08-05"}
-            ]
-        ),
-        CourtCase(
-            CaseNo="KSP-2026-CT-209",
-            FIRNo="FIR-2026-0045",
-            DistrictName="Mangaluru / Dakshina Kannada",
-            PoliceStationName="Urwa PS",
-            CourtName="District & Sessions Court, Mangaluru",
-            JudgeBench="Hon'ble Justice P. V. Bhat",
-            PublicProsecutor="Adv. Suresh M.",
-            DefenseCounsel="Adv. K. R. Rao",
-            TrialStage="Framing of Charges",
-            CaseStatus="Under Trial",
-            NextHearingDate="2026-08-18",
-            OrderNotes="Accused #1 produced via Video Conferencing from Central Jail Hindalga. Charges read over.",
-            OffenceSummary="Commercial NDPS Narcotic Contraband Seizure",
-            BNSSections="Sec 318 BNS, NDPS Act Sec 20(b)",
-            AccusedNames="Mohammed Imran @ Drug Kingpin",
-            ComplainantName="State of Karnataka (Narcotics Cell)",
-            Milestones=[
-                {"stage": "FIR Registered", "date": "2026-01-08", "status": "Completed", "note": "4.2kg Methamphetamine contraband seized"},
-                {"stage": "Charge Sheet Filed", "date": "2026-04-02", "status": "Completed", "note": "Submitted with Chemical FSL Report"},
-                {"stage": "Framing of Charges", "date": "2026-07-10", "status": "In Progress", "note": "Video conferencing link established with Hindalga Jail"}
-            ]
-        ),
-        CourtCase(
-            CaseNo="KSP-2025-CT-312",
-            FIRNo="FIR-2025-0552",
-            DistrictName="Hubballi-Dharwad",
-            PoliceStationName="Suburban PS Hubballi",
-            CourtName="III Addl. District Court, Hubballi",
-            JudgeBench="Hon'ble Judge A. K. Joshi",
-            PublicProsecutor="Adv. S. S. Patil",
-            DefenseCounsel="Adv. V. G. Kulkarni",
-            TrialStage="Summoning of Defense Witnesses",
-            CaseStatus="Under Trial",
-            NextHearingDate="2026-08-22",
-            OrderNotes="D.W. 1 summons issued. Bail petition of Accused #2 rejected.",
-            OffenceSummary="Extortion & Syndicate Organized Crime under BNS",
-            BNSSections="Sec 308 BNS, Sec 111 BNS (Organized Crime)",
-            AccusedNames="Sharath @ D-Gang Associate & 2 Others",
-            ComplainantName="State of Karnataka",
-            Milestones=[
-                {"stage": "Pre-Trial Conference", "date": "2025-10-04", "status": "Completed", "note": "Evidence admissibility settled"},
-                {"stage": "Prosecution Evidence", "date": "2026-03-12", "status": "Completed", "note": "Complainant and IO testimony concluded"},
-                {"stage": "Defense Evidence", "date": "2026-07-02", "status": "In Progress", "note": "Summons issued to D.W. 1"}
-            ]
-        ),
-        CourtCase(
-            CaseNo="KSP-2026-CT-405",
-            FIRNo="FIR-2026-0118",
-            DistrictName="Belagavi",
-            PoliceStationName="Camp PS Belagavi",
-            CourtName="II ACMM Court, Belagavi",
-            JudgeBench="Hon'ble Magistrate M. B. Deshpande",
-            PublicProsecutor="Adv. B. R. Patil",
-            DefenseCounsel="Adv. S. M. Kulkarni",
-            TrialStage="Cognizance & Pre-Trial Notice",
-            CaseStatus="Under Trial",
-            NextHearingDate="2026-08-28",
-            OrderNotes="Court took cognizance of BNS Charge Sheet. Summons issued to accused entities.",
-            OffenceSummary="High-Value Land Record Forgery & Impersonation",
-            BNSSections="Sec 336 BNS, Sec 338 BNS (Forgery)",
-            AccusedNames="Basavaraj & Property Syndicate",
-            ComplainantName="State of Karnataka",
-            Milestones=[
-                {"stage": "FIR Registered", "date": "2026-02-14", "status": "Completed", "note": "Fake Revenue Stamps & Land Documents seized"},
-                {"stage": "Charge Sheet Submitted", "date": "2026-06-01", "status": "Completed", "note": "Submitted to II ACMM Court"},
-                {"stage": "Cognizance Taken", "date": "2026-07-18", "status": "In Progress", "note": "Summons issued for initial appearance"}
-            ]
-        ),
-        CourtCase(
-            CaseNo="KSP-2025-CT-518",
-            FIRNo="FIR-2025-0922",
-            DistrictName="Kalaburagi",
-            PoliceStationName="Station Bazaar PS",
-            CourtName="Principal District Court, Kalaburagi",
-            JudgeBench="Hon'ble Justice G. S. Hiremath",
-            PublicProsecutor="Adv. H. G. Rathod",
-            DefenseCounsel="Adv. C. M. Biradar",
-            TrialStage="Verdict Announced - Conviction Executed",
-            CaseStatus="Convicted",
-            NextHearingDate="Disposed",
-            OrderNotes="Accused #1 & #2 convicted under Sec 303(2) BNS. Sentenced to 7 Years Rigorous Imprisonment with ₹1,00,000 fine each.",
-            OffenceSummary="Inter-State Armed Heist & Assault",
-            BNSSections="Sec 303(2) BNS, Sec 109 BNS",
-            AccusedNames="Santosh @ Gungloo & Anil",
-            ComplainantName="State of Karnataka",
-            Milestones=[
-                {"stage": "Charges Framed", "date": "2025-05-10", "status": "Completed", "note": "Armed Dacoity & Assault charges framed"},
-                {"stage": "Trial & Evidence Concluded", "date": "2026-01-20", "status": "Completed", "note": "19 witnesses and 34 exhibits evaluated"},
-                {"stage": "Judicial Verdict", "date": "2026-06-30", "status": "Completed", "note": "Guilty Verdict Pronounced - 7 Years RI Executed"}
-            ]
-        )
-    ]
-    try:
-        db.bulk_save_objects(cases)
-        db.commit()
-        logger.info(f"Successfully seeded {len(cases)} Court Monitoring cases into database!")
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error seeding court cases: {e}")
-
 
 # --- Orchestrated Seeding Pipeline ---
 
@@ -712,10 +563,22 @@ def seed_database(db: Session):
     seed_table(db, Evidence, "Evidence.csv", map_evidence)
     seed_table(db, Vehicle, "Vehicle.csv", map_vehicle)
     
+    # 5b. Reference data derived from the CSVs (status names) and honest placeholder officers.
+    from app.db.data_repair import find_seed_dir, sync_case_status_master, normalise_placeholder_officers
+    seed_dir = find_seed_dir()
+    if seed_dir:
+        try:
+            sync_case_status_master(db, seed_dir)
+        except Exception as exc:
+            db.rollback()
+            logger.error(f"Could not seed case_status_master: {exc}")
+    normalise_placeholder_officers(db)
+
     # 6. Default Roles & Identity Seeding
     seed_roles_and_permissions(db)
     seed_users(db)
-    seed_court_cases(db)
+    remove_fictional_court_cases(db)
+    purge_generated_notifications(db)
 
     # 7. Sync Auto-increment Sequences
     reset_db_sequences(db)

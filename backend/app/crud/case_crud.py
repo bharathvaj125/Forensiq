@@ -1,10 +1,14 @@
-from sqlalchemy.orm import Session, selectinload, joinedload
-from sqlalchemy import or_, desc
+import logging
+from datetime import date
+
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import String, cast, func, or_, desc
 from app.models.case_master import CaseMaster
 from app.models.police_station import PoliceStation
 from app.models.district import District
 from app.models.user import User
 from app.middleware.jurisdiction_scope import apply_jurisdiction_filter
+from app.services import cache
 
 def _attach_district_info(db: Session, cases: list[CaseMaster]):
     if not cases:
@@ -21,21 +25,6 @@ def _attach_district_info(db: Session, cases: list[CaseMaster]):
             setattr(c, "DistrictID", did)
             setattr(c, "DistrictName", dname)
             setattr(c, "PoliceStationName", psname)
-
-        # Dynamic AIRiskScore & InvestigationPriority calculation for non-placeholder realistic distribution
-        score = getattr(c, "AIRiskScore", None)
-        gravity = getattr(c, "GravityOffenceID", 2)
-        if score is None or score == 0.55:
-            score = 0.74 if gravity == 1 else round((((c.CaseMasterID * 37) % 75) / 100 + 0.12), 4)
-            setattr(c, "AIRiskScore", score)
-
-        if score >= 0.60 or gravity == 1:
-            p_label = "High"
-        elif score >= 0.30:
-            p_label = "Medium"
-        else:
-            p_label = "Low"
-        setattr(c, "InvestigationPriority", p_label)
 
 def get_case_by_id(db: Session, case_id: int, user: User) -> CaseMaster | None:
     """
@@ -84,7 +73,10 @@ def get_cases_paginated(
     district_id: int = None,
     station_id: int = None,
     status_id: int = None,
-    sort_by: str = None
+    sort_by: str = None,
+    risk_levels: list[str] | None = None,
+    status_group: str | None = None,
+    crime_category: str | None = None,
 ) -> tuple[list[CaseMaster], int]:
     """
     Retrieves a paginated list of cases alongside the total count matching the criteria.
@@ -101,6 +93,15 @@ def get_cases_paginated(
         query = query.filter(CaseMaster.PoliceStationID == station_id)
     if status_id is not None:
         query = query.filter(CaseMaster.CaseStatusID == status_id)
+    if status_group:
+        from app.services import reference_data
+        query = query.filter(CaseMaster.CaseStatusID.in_(reference_data.status_groups(db).get(status_group.lower(), [-1])))
+    if risk_levels:
+        query = query.filter(CaseMaster.AIRiskLevel.in_(risk_levels))
+    if crime_category:
+        from app.services.case_filters import apply_case_filters
+        query = apply_case_filters(query, db, crime_category=crime_category)
+    query = query.filter(CaseMaster.CrimeRegisteredDate <= date.today())  # registrations dated in the future are data errors
     if search:
         query = query.filter(
             or_(
@@ -120,7 +121,9 @@ def get_cases_paginated(
     elif sort_by == "priority_desc":
         query = query.order_by(desc(CaseMaster.InvestigationPriority))
     elif sort_by == "risk_desc":
-        query = query.order_by(desc(CaseMaster.AIRiskScore))
+        query = query.order_by(desc(CaseMaster.AIRiskScore).nullslast())
+    elif sort_by == "risk_asc":
+        query = query.order_by(CaseMaster.AIRiskScore.asc().nullslast())
     else:
         query = query.order_by(desc(CaseMaster.CaseMasterID))
 
@@ -128,12 +131,84 @@ def get_cases_paginated(
     _attach_district_info(db, cases)
     return cases, total_count
 
-def create_case(db: Session, case_data: dict) -> CaseMaster:
-    """Creates a new CaseMaster record in the database."""
-    db_case = CaseMaster(**case_data)
+def _unit_prefix(db: Session, station_id: int) -> str:
+    """The 6-digit unit prefix of existing CrimeNo values at this station, else its district, else any case."""
+    from app.models.police_station import PoliceStation as Station
+    prefix = func.substr(cast(CaseMaster.CrimeNo, String), 1, 6)
+    for scope in (
+        CaseMaster.PoliceStationID == station_id,
+        CaseMaster.PoliceStationID.in_(
+            db.query(Station.UnitID).filter(Station.DistrictID == db.query(Station.DistrictID).filter(Station.UnitID == station_id).scalar_subquery())
+        ),
+        None,
+    ):
+        query = db.query(prefix)
+        if scope is not None:
+            query = query.filter(scope)
+        value = query.order_by(CaseMaster.CaseMasterID.desc()).limit(1).scalar()
+        if value:
+            return value
+    raise ValueError("Cannot derive a CrimeNo prefix: there are no existing cases.")
+
+
+def assign_case_numbers(db: Session, data: dict) -> dict:
+    """Fill in CaseNo (year + 5-digit sequence at the station) and CrimeNo (station unit prefix +
+    3-digit station + CaseNo) following the dataset's numbering, guaranteeing CrimeNo is unique."""
+    station_id = data["PoliceStationID"]
+    registered = data.get("CrimeRegisteredDate") or date.today()
+    year = str(registered.year)
+
+    if not data.get("CaseNo"):
+        last = db.query(func.max(CaseMaster.CaseNo)).filter(
+            CaseMaster.PoliceStationID == station_id, CaseMaster.CaseNo.like(f"{year}%")
+        ).scalar()
+        sequence = int(last[len(year):]) + 1 if last and last[len(year):].isdigit() else 1
+        data["CaseNo"] = f"{year}{sequence:05d}"
+
+    if not data.get("CrimeNo"):
+        prefix = _unit_prefix(db, station_id)
+        sequence = int(data["CaseNo"][len(year):])
+        while True:
+            candidate = int(f"{prefix}{station_id:03d}{year}{sequence:05d}")
+            if not db.query(CaseMaster.CaseMasterID).filter(CaseMaster.CrimeNo == candidate).first():
+                data["CrimeNo"] = candidate
+                break
+            sequence += 1
+    return data
+
+
+def create_case(db: Session, case_data: dict, related: dict | None = None) -> CaseMaster:
+    """Creates a new CaseMaster record, assigns FIR numbers if absent, stores the accused / victims / witnesses /
+    vehicles recorded with it in the same transaction, and scores it with the risk model."""
+    from app.models.accused import Accused
+    from app.models.vehicle import Vehicle
+    from app.models.victim import Victim
+    from app.models.witness import Witness
+
+    for ai_field in ("AIRiskScore", "AIRiskLevel", "AIRiskModelVersion"):
+        case_data.pop(ai_field, None)
+    case_data = assign_case_numbers(db, case_data)
+    columns = {column.key for column in CaseMaster.__table__.columns}
+    db_case = CaseMaster(**{key: value for key, value in case_data.items() if key in columns})  # drop response-only fields (e.g. DistrictName)
     db.add(db_case)
+    db.flush()  # assigns CaseMasterID so the related rows can reference it
+    related = related or {}
+    for model, key in ((Accused, "Accused"), (Victim, "Victims"), (Witness, "Witnesses"), (Vehicle, "Vehicles")):
+        for position, item in enumerate(related.get(key) or [], start=1):
+            values = dict(item)
+            if model is Accused:
+                values["PersonID"] = position  # the accused's slot within the case, as in the imported records
+            db.add(model(CaseMasterID=db_case.CaseMasterID, **values))
     db.commit()
+    cache.clear()
     db.refresh(db_case)
+    try:
+        from app.services import risk_service
+        risk_service.score_cases(db, [db_case])
+        db.refresh(db_case)
+    except Exception:
+        # Leave the case unscored rather than invent a score; startup re-scoring picks it up.
+        logging.getLogger("ksp_backend").exception("Risk scoring failed for new case %s", db_case.CaseMasterID)
     return db_case
 
 def update_case(db: Session, case_db: CaseMaster, case_data: dict) -> CaseMaster:
@@ -141,6 +216,7 @@ def update_case(db: Session, case_db: CaseMaster, case_data: dict) -> CaseMaster
     for key, value in case_data.items():
         setattr(case_db, key, value)
     db.commit()
+    cache.clear()
     db.refresh(case_db)
     return case_db
 
@@ -151,4 +227,5 @@ def delete_case(db: Session, case_id: int) -> bool:
         return False
     db.delete(db_case)
     db.commit()
+    cache.clear()
     return True

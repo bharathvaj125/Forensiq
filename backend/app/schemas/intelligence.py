@@ -11,6 +11,11 @@ class PredictRiskResponse(BaseModel):
     AIRiskScore: float
     RiskLevel: str
     TopRiskFactors: List[RiskFactor]
+    ModelVersion: str | None = None
+    Summary: str | None = None
+    Confidence: float | None = None
+    ConfidenceMeaning: str | None = None
+    ClassProbabilities: dict[str, float] | None = None
 
 
 class SimilarityFactor(BaseModel):
@@ -30,6 +35,8 @@ class SimilarCasesResponse(BaseModel):
     SourceCaseMasterID: int
     ModelName: str
     ModelVersion: str
+    SearchedCases: int | None = None  # cases that have an embedding and so can be matched
+    TotalCases: int | None = None
     Matches: List[SimilarCaseMatch]
 
 
@@ -37,6 +44,8 @@ class EmbeddingBackfillResponse(BaseModel):
     Processed: int
     Created: int
     Updated: int
+    Pending: int | None = None
+    Note: str | None = None
     ModelName: str
     ModelVersion: str
 
@@ -60,6 +69,10 @@ class RepeatOffenderMatch(BaseModel):
     AccusedMasterID: int
     Confidence: float
     Factors: List[str]
+    Linkage: str | None = None  # "Confirmed" (same recorded criminal profile) or "Probable" (model-linked)
+    AccusedName: str | None = None
+    CaseMasterID: int | None = None
+    CaseNo: str | None = None
 
 
 class RepeatOffenderResponse(BaseModel):
@@ -71,8 +84,12 @@ class AnomalyFinding(BaseModel):
     CaseMasterID: int
     AnomalyScore: float
     Factors: List[str]
+    ZScore: float | None = None
+    CaseNo: str | None = None
 
 
 class AnomalyResponse(BaseModel):
     ModelVersion: str
     Findings: List[AnomalyFinding]
+    CasesAnalysed: int | None = None
+    Cutoff: float | None = None

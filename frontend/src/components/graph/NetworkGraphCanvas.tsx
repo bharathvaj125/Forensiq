@@ -79,7 +79,7 @@ export default function NetworkGraphCanvas({ graphData, isLoading }: NetworkGrap
         target: e.target,
         relationship: e.relationship,
         confidence: e.confidence || 1.0,
-        evidence_source: e.evidence_source || "KSP Registry",
+        evidence_source: e.evidence_source || "Case records",
       },
     }));
 
@@ -378,7 +378,7 @@ export default function NetworkGraphCanvas({ graphData, isLoading }: NetworkGrap
     if (!cyRef.current) return;
     const png64 = cyRef.current.png({ full: true, scale: 2 });
     const link = document.createElement("a");
-    link.download = `KSP_Criminal_Network_${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `Forensiq_Network_${new Date().toISOString().slice(0, 10)}.png`;
     link.href = png64;
     link.click();
   };
@@ -413,7 +413,7 @@ export default function NetworkGraphCanvas({ graphData, isLoading }: NetworkGrap
     const jsonStr = JSON.stringify(cyRef.current.json(), null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const link = document.createElement("a");
-    link.download = `KSP_Graph_Topology_${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `Forensiq_Graph_${new Date().toISOString().slice(0, 10)}.json`;
     link.href = URL.createObjectURL(blob);
     link.click();
   };
@@ -642,7 +642,7 @@ export default function NetworkGraphCanvas({ graphData, isLoading }: NetworkGrap
               <div className="flex items-center gap-2">
                 {getNodeIcon(selectedNode.node_type)}
                 <h3 className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">
-                  KSP Intelligence Dossier
+                  Entity dossier
                 </h3>
               </div>
               <button
@@ -680,7 +680,7 @@ export default function NetworkGraphCanvas({ graphData, isLoading }: NetworkGrap
                 </div>
                 <div>
                   <span className="text-slate-500 text-[9px] block">DATA SOURCE</span>
-                  <span className="text-slate-300 font-bold">KSP Database</span>
+                  <span className="text-slate-300 font-bold">Case database</span>
                 </div>
               </div>
 
@@ -722,7 +722,7 @@ export default function NetworkGraphCanvas({ graphData, isLoading }: NetworkGrap
       {/* 3. SOLID BOTTOM ENTITY KEY LEGEND BAR (OUTSIDE GRAPH CANVAS) */}
       <div className="w-full bg-[#0d1322] border-t border-[#1e293b] p-2 flex flex-wrap items-center justify-between gap-4 text-[10px] font-mono flex-shrink-0 z-10">
         <div className="flex items-center gap-4 flex-wrap">
-          <span className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">KSP Entity Key:</span>
+          <span className="text-slate-400 text-[9px] uppercase tracking-wider font-bold">Entity key:</span>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-300"></span>
             <span className="text-slate-200">Repeat Suspect</span>

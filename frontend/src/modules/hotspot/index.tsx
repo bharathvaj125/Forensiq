@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { hotspotService } from "../../services/hotspotService";
+import { hotspotService, PredictedHotspot } from "../../services/hotspotService";
 import { Filter, Layers, Compass, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -11,118 +11,72 @@ interface HotspotProps {
   activeTab?: "gis" | "dashboard";
 }
 
+const RISK_COLOUR: Record<string, string> = { Severe: "#ef4444", High: "#f97316", Medium: "#f59e0b", Low: "#3b82f6" };
+const HOTSPOT_COLOUR: Record<string, string> = { Critical: "#ef4444", High: "#f97316", Medium: "#f59e0b", Low: "#3b82f6" };
+const BOUNDS_PADDING = 0.6; // degrees of pan room around the data
+
+const escapeHtml = (value: string | number | null | undefined) =>
+  String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
 export default function Hotspot({ activeTab = "gis" }: HotspotProps) {
-  const { translateData } = useLanguage();
+  const { t, translateData } = useLanguage();
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<L.Map | null>(null);
   const markerLayerGroup = useRef<L.LayerGroup | null>(null);
-  const predictedLayerGroup = useRef<L.LayerGroup | null>(null);
-  const patrolRouteLayer = useRef<L.Polyline | null>(null);
-
-  const [selectedHotspot, setSelectedHotspot] = useState<any>(null);
-  const timeHour = 24;
-  const [filters, setFilters] = useState({
-    district: "",
-    crimeType: "",
-    severity: "",
-  });
-
-  const [layers, setLayers] = useState({
-    incidents: true,
-    stations: true,
-    predicted: true,
-  });
-
-  const [mapTileStyle, setMapTileStyle] = useState<"osm" | "voyager" | "esri">("osm");
+  const stationLayerGroup = useRef<L.LayerGroup | null>(null);
+  const hotspotLayerGroup = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const [currentLat, setCurrentLat] = useState(14.5204);
-  const [currentLng, setCurrentLng] = useState(75.7224);
+  const framedOnce = useRef(false);
 
-  const karnatakaDistricts: Record<number, string> = {
-    1: "Bagalkot", 2: "Ballari", 3: "Belagavi", 4: "Bengaluru Rural", 5: "Bengaluru Urban",
-    6: "Bidar", 7: "Chamarajanagar", 8: "Chikballapur", 9: "Chikkamagaluru", 10: "Chitradurga",
-    11: "Dakshina Kannada", 12: "Davanagere", 13: "Dharwad", 14: "Gadag", 15: "Hassan",
-    16: "Haveri", 17: "Kalaburagi", 18: "Kodagu", 19: "Kolar", 20: "Koppal",
-    21: "Mandya", 22: "Mysuru", 23: "Raichur", 24: "Ramanagara", 25: "Shivamogga",
-    26: "Tumakuru", 27: "Udupi", 28: "Uttara Kannada", 29: "Vijayapura", 30: "Yadgir", 31: "Vijayanagara"
+  const [selectedHotspot, setSelectedHotspot] = useState<PredictedHotspot | null>(null);
+  const [filters, setFilters] = useState({ district: "", station: "", crimeType: "" });
+  const [layers, setLayers] = useState({ incidents: true, stations: true, predicted: true });
+  const [mapTileStyle, setMapTileStyle] = useState<"osm" | "voyager" | "esri">("osm");
+  const [centre, setCentre] = useState<[number, number]>([0, 0]);
+
+  const apiFilters = {
+    districtId: filters.district ? Number(filters.district) : undefined,
+    stationId: filters.station ? Number(filters.station) : undefined,
+    crimeType: filters.crimeType || undefined,
   };
 
-  const districtCenterCoords: Record<number, [number, number]> = {
-    1: [16.1853, 75.6960], // Bagalkot
-    2: [15.1394, 76.9214], // Ballari
-    3: [15.8497, 74.4977], // Belagavi
-    4: [13.2257, 77.5750], // Bengaluru Rural
-    5: [12.9716, 77.5946], // Bengaluru Urban
-    6: [17.9104, 77.5199], // Bidar
-    7: [11.9261, 76.9437], // Chamarajanagar
-    8: [13.4355, 77.7275], // Chikballapur
-    9: [13.3161, 75.7720], // Chikkamagaluru
-    10: [14.2251, 76.3980], // Chitradurga
-    11: [12.9141, 74.8560], // Dakshina Kannada
-    12: [14.4644, 75.9218], // Davanagere
-    13: [15.4589, 75.0078], // Dharwad
-    14: [15.4319, 75.6355], // Gadag
-    15: [13.0033, 76.1004], // Hassan
-    16: [14.7958, 75.3992], // Haveri
-    17: [17.3297, 76.8343], // Kalaburagi
-    18: [12.4244, 75.7382], // Kodagu
-    19: [13.1367, 78.1292], // Kolar
-    20: [15.3503, 76.1554], // Koppal
-    21: [12.5218, 76.8951], // Mandya
-    22: [12.2958, 76.6394], // Mysuru
-    23: [16.2076, 77.3563], // Raichur
-    24: [12.7160, 77.2814], // Ramanagara
-    25: [13.9299, 75.5681], // Shivamogga
-    26: [13.3409, 77.1006], // Tumakuru
-    27: [13.3409, 74.7421], // Udupi
-    28: [14.8142, 74.1297], // Uttara Kannada
-    29: [16.8302, 75.7100], // Vijayapura
-    30: [16.7705, 77.1376], // Yadgir
-    31: [15.2713, 76.3869], // Vijayanagara
-  };
-
-  const crimeCategoryOptions = [
-    { value: "", label: "📋 All IPC Crime Classifications" },
-    { value: "burglary", label: "🌙 Residential / Night Burglary & House Breaking" },
-    { value: "theft", label: "🚗 Motor Vehicle & Property Theft" },
-    { value: "cyber", label: "💻 Cyber Crime & Financial Extortion" },
-    { value: "assault", label: "🚨 Armed Robbery & Violent Assault" },
-    { value: "women", label: "🛡️ Crimes Against Women & Children" },
-    { value: "narcotics", label: "📦 NDPS & Illegal Contraband" }
-  ];
-
-  // Query live crime coordinates
-  const { data: hotspotData } = useQuery({
-    queryKey: ["hotspotsData", filters.district, filters.crimeType],
-    queryFn: () => hotspotService.getHotspots(filters.district ? Number(filters.district) : undefined, filters.crimeType || undefined),
+  const { data: mapLayers } = useQuery({ queryKey: ["mapLayers"], queryFn: () => hotspotService.getLayers() });
+  const { data: pointData, isFetching: isPointsLoading } = useQuery({
+    queryKey: ["hotspotPoints", filters],
+    queryFn: () => hotspotService.getHotspots(apiFilters),
   });
-
-  // Query predicted AI hotspots
   const { data: predictedData, isLoading: isPredictedLoading } = useQuery({
-    queryKey: ["predictedData"],
-    queryFn: () => hotspotService.getPredictedHotspots(),
+    queryKey: ["predictedHotspots", filters],
+    queryFn: () => hotspotService.getPredictedHotspots(apiFilters),
   });
 
-  const points = hotspotData?.points || [];
-  const predictedHotspots = predictedData?.hotspots || [];
+  const points = useMemo(() => pointData?.points ?? [], [pointData]);
+  const predictedHotspots = useMemo(() => predictedData?.hotspots ?? [], [predictedData]);
+  const stationsInScope = useMemo(
+    () => (mapLayers?.stations ?? []).filter((s) => !filters.district || s.district_id === Number(filters.district)),
+    [mapLayers, filters.district],
+  );
+  const bounds = mapLayers?.bounds ?? null;
 
-  // Auto-center map when a district is selected from the dropdown
+  // A selected hotspot belongs to the previous filter result; clear it when the filters change.
+  useEffect(() => setSelectedHotspot(null), [filters]);
+
+  // Pan to the chosen district / station, using the medians computed from its FIRs.
   useEffect(() => {
-    if (!leafletMap.current) return;
-    if (filters.district && districtCenterCoords[Number(filters.district)]) {
-      const coords = districtCenterCoords[Number(filters.district)];
-      leafletMap.current.setView(coords, 12, { animate: true });
-    }
-  }, [filters.district]);
+    const map = leafletMap.current;
+    if (!map || !mapLayers) return;
+    const station = mapLayers.stations.find((s) => s.id === Number(filters.station));
+    const district = mapLayers.districts.find((d) => d.id === Number(filters.district));
+    if (station) map.setView([station.latitude, station.longitude], 13, { animate: true });
+    else if (district) map.setView([district.latitude, district.longitude], 10, { animate: true });
+    else if (bounds) map.fitBounds(bounds);
+  }, [filters.district, filters.station, mapLayers, bounds]);
 
-
-
-  // Dynamic Tile Layer Switching (OSM Detailed Streets/Schools vs Voyager vs Esri)
+  // Basemap switching
   useEffect(() => {
-    if (!leafletMap.current) return;
-    if (tileLayerRef.current) {
-      leafletMap.current.removeLayer(tileLayerRef.current);
-    }
+    const map = leafletMap.current;
+    if (!map) return;
+    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
     let url = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
     let subdomains: string | string[] = ["a", "b", "c"];
     if (mapTileStyle === "voyager") {
@@ -132,411 +86,237 @@ export default function Hotspot({ activeTab = "gis" }: HotspotProps) {
       url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}";
       subdomains = [];
     }
-
-    tileLayerRef.current = L.tileLayer(url, {
-      maxZoom: 19,
-      subdomains: subdomains as any,
-      keepBuffer: 6,
-      updateWhenZooming: false,
-      updateWhenIdle: true,
-    }).addTo(leafletMap.current);
+    tileLayerRef.current = L.tileLayer(url, { maxZoom: 19, subdomains: subdomains as any, keepBuffer: 6, updateWhenZooming: false, updateWhenIdle: true }).addTo(map);
   }, [mapTileStyle]);
 
-  // Initialize Map with Canvas Renderer & Fast Instant Zooming
+  // Map creation
   useEffect(() => {
     if (!mapRef.current || leafletMap.current) return;
-
-    const karnatakaBounds: L.LatLngBoundsExpression = [
-      [11.2, 73.8], // Southwest corner
-      [18.9, 78.8]  // Northeast corner
-    ];
-
     const map = L.map(mapRef.current, {
-      preferCanvas: true,
-      zoomControl: false,
-      attributionControl: false,
-      zoomSnap: 1,
-      zoomDelta: 1,
-      wheelPxPerZoomLevel: 50,
-      zoomAnimation: true,
-      fadeAnimation: false,
-      markerZoomAnimation: true,
-      minZoom: 7,
-      maxZoom: 19,
-      maxBounds: karnatakaBounds,
-      maxBoundsViscosity: 0.8,
-    }).setView([14.5204, 75.7224], 8); // Centered over Karnataka
-
-    // Add initial tile layer with buffer preloading
-    tileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      keepBuffer: 6,
-      updateWhenZooming: false,
-      updateWhenIdle: true,
-    }).addTo(map);
-
+      preferCanvas: true, zoomControl: false, attributionControl: false, zoomSnap: 1, zoomDelta: 1, wheelPxPerZoomLevel: 50,
+      zoomAnimation: true, fadeAnimation: false, markerZoomAnimation: true, minZoom: 5, maxZoom: 19, maxBoundsViscosity: 0.8,
+    }).setView([20, 78], 5);
+    tileLayerRef.current = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, keepBuffer: 6, updateWhenZooming: false, updateWhenIdle: true }).addTo(map);
     L.control.zoom({ position: "bottomright" }).addTo(map);
-
-    // Track map center position for vertical and horizontal pan bars
     map.on("moveend", () => {
       const c = map.getCenter();
-      setCurrentLat(c.lat);
-      setCurrentLng(c.lng);
+      setCentre([c.lat, c.lng]);
     });
-
     leafletMap.current = map;
+    stationLayerGroup.current = L.layerGroup().addTo(map);
     markerLayerGroup.current = L.layerGroup().addTo(map);
-    predictedLayerGroup.current = L.layerGroup().addTo(map);
-
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-
-    leafletMap.current = map;
-    markerLayerGroup.current = L.layerGroup().addTo(map);
-    predictedLayerGroup.current = L.layerGroup().addTo(map);
-
-    // Initial dummy polyline for patrol routing
-    patrolRouteLayer.current = L.polyline([], { color: "#3b82f6", weight: 3, dashArray: "5, 10" }).addTo(map);
-
+    hotspotLayerGroup.current = L.layerGroup().addTo(map);
+    // The container is laid out after mount; keep Leaflet's idea of its size current so framing and zoom are right.
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(mapRef.current);
     return () => {
-      if (leafletMap.current) {
-        leafletMap.current.remove();
-        leafletMap.current = null;
-      }
+      observer.disconnect();
+      map.remove();
+      leafletMap.current = null;
     };
   }, []);
 
-  // Update map layers based on time, toggles, and filters
+  // Frame the map on the data once the layers arrive (extent comes from the FIR coordinates, not from code).
   useEffect(() => {
     const map = leafletMap.current;
-    const markerGroup = markerLayerGroup.current;
-    const predGroup = predictedLayerGroup.current;
-    const routeLine = patrolRouteLayer.current;
+    if (!map || !bounds || framedOnce.current) return;
+    framedOnce.current = true;
+    map.invalidateSize();
+    map.fitBounds(bounds);
+    map.setMaxBounds([[bounds[0][0] - BOUNDS_PADDING, bounds[0][1] - BOUNDS_PADDING], [bounds[1][0] + BOUNDS_PADDING, bounds[1][1] + BOUNDS_PADDING]]);
+    map.setMinZoom(Math.max(5, map.getZoom() - 1));
+  }, [bounds]);
 
-    if (!map || !markerGroup || !predGroup || !routeLine) return;
-
-    markerGroup.clearLayers();
-    predGroup.clearLayers();
-    routeLine.setLatLngs([]);
-
-    // Extract real hour from PostgreSQL timestamp
-    const getPointHour = (pt: any): number => {
-      if (pt.IncidentFromDate) {
-        const d = new Date(pt.IncidentFromDate);
-        if (!isNaN(d.getTime())) return d.getHours();
-      }
-      if (pt.CrimeRegisteredDate) {
-        const d = new Date(pt.CrimeRegisteredDate);
-        if (!isNaN(d.getTime())) return d.getHours();
-      }
-      return 12;
-    };
-
-    // Filter points by time window: when timeHour === 24, show ALL 5000 cases; otherwise filter by 4-hr shift window
-    const filteredPoints = points.filter((pt: any) => {
-      if (timeHour === 24) return true;
-      const ptHour = getPointHour(pt);
-      const minHour = Math.max(0, timeHour - 4);
-      return ptHour >= minHour && ptHour <= timeHour;
-    });
-
-    if (layers.incidents && filteredPoints.length > 0) {
-      filteredPoints.forEach((pt: any) => {
-        // District filter
-        if (filters.district && pt.DistrictID && pt.DistrictID !== Number(filters.district)) return;
-
-        // Crime Type / Category filter
-        if (filters.crimeType) {
-          const typeKey = filters.crimeType.toLowerCase();
-          const facts = (pt.BriefFacts || "").toLowerCase();
-          if (typeKey === "burglary" && !facts.includes("burgla") && !facts.includes("house") && !facts.includes("lurking") && !facts.includes("theft") && pt.CrimeHeadID !== 2) return;
-          if (typeKey === "theft" && !facts.includes("theft") && !facts.includes("stolen") && !facts.includes("vehicle") && pt.CrimeHeadID !== 2) return;
-          if (typeKey === "cyber" && !facts.includes("cyber") && !facts.includes("bank") && !facts.includes("fraud") && !facts.includes("online") && pt.CrimeHeadID !== 7) return;
-          if (typeKey === "assault" && !facts.includes("assault") && !facts.includes("robbery") && !facts.includes("stab") && !facts.includes("murder") && pt.CrimeHeadID !== 1) return;
-          if (typeKey === "women" && !facts.includes("dowry") && !facts.includes("molest") && !facts.includes("rape") && !facts.includes("assault") && pt.CrimeHeadID !== 3) return;
-          if (typeKey === "narcotics" && !facts.includes("ganja") && !facts.includes("drug") && !facts.includes("ndps") && pt.CrimeHeadID !== 8) return;
-        }
-
-        const ptHour = getPointHour(pt);
-        const isNightBurglary = filters.crimeType === "burglary";
-        const fillColor = isNightBurglary ? "#ef4444" : (pt.AIRiskScore > 0.7 ? "#f97316" : "#3b82f6");
-        const radius = isNightBurglary ? 7 : 5;
-
-        const timeStr = `${String(ptHour).padStart(2, '0')}:00 hrs`;
-        const marker = L.circleMarker([pt.latitude, pt.longitude], {
-          renderer: L.canvas(),
-          radius: radius,
-          fillColor: fillColor,
-          color: "#ffffff",
-          weight: 1,
-          opacity: 0.9,
-          fillOpacity: 0.75,
-        }).bindPopup(`
+  // Incident markers: colour = the risk level the model assigned to the FIR
+  useEffect(() => {
+    const group = markerLayerGroup.current;
+    if (!group) return;
+    group.clearLayers();
+    if (!layers.incidents) return;
+    points.forEach((pt) => {
+      const colour = RISK_COLOUR[pt.AIRiskLevel ?? ""] ?? "#64748b";
+      L.circleMarker([pt.latitude, pt.longitude], { radius: pt.AIRiskLevel === "Severe" ? 7 : 5, fillColor: colour, color: "#ffffff", weight: 1, opacity: 0.9, fillOpacity: 0.75 })
+        .bindPopup(`
           <div class="text-slate-900 text-xs font-sans p-2">
-            <strong class="text-blue-700 text-sm block mb-1">Case #${pt.CaseNo || pt.CaseMasterID || 'Incident'}</strong>
-            <p class="leading-relaxed font-semibold mb-1.5 text-slate-800">${pt.BriefFacts || "Crime log incident."}</p>
+            <strong class="text-blue-700 text-sm block mb-1">FIR ${escapeHtml(pt.CaseNo ?? pt.CaseMasterID)}</strong>
+            <p class="leading-relaxed font-semibold mb-1.5 text-slate-800">${escapeHtml(pt.BriefFacts)}</p>
             <div class="space-y-0.5 border-t border-slate-200 pt-1 text-[11px] font-mono">
-              <span class="text-slate-700 block">🕒 Recorded Hour: <strong>${timeStr}</strong></span>
-              <span class="text-slate-700 block">🏢 Police Unit: <strong>${pt.PoliceStationName || "KSP Precinct"}</strong></span>
-              ${pt.AIRiskScore ? `<span class="text-red-700 font-bold block mt-1">🚨 AI Risk Score: ${pt.AIRiskScore.toFixed(2)}</span>` : ''}
+              ${pt.CrimeHeadName ? `<span class="text-slate-700 block">Crime: <strong>${escapeHtml(pt.CrimeHeadName)}</strong></span>` : ""}
+              <span class="text-slate-700 block">Station: <strong>${escapeHtml(pt.PoliceStationName)}</strong></span>
+              ${pt.IncidentFromDate ? `<span class="text-slate-700 block">Incident: <strong>${escapeHtml(pt.IncidentFromDate.replace("T", " ").slice(0, 16))}</strong></span>` : ""}
+              ${pt.AIRiskLevel ? `<span class="font-bold block mt-1" style="color:${colour}">AI risk: ${escapeHtml(pt.AIRiskLevel)}${pt.AIRiskScore != null ? ` (${pt.AIRiskScore.toFixed(2)})` : ""}</span>` : ""}
             </div>
-          </div>
-        `);
-        markerGroup.addLayer(marker);
-      });
-    }
+          </div>`)
+        .addTo(group);
+    });
+  }, [points, layers.incidents]);
 
-    // 2. Police Stations
-    if (layers.stations) {
-      const mockStations = [
-        { name: "KSP Central Command HQ", lat: 12.9716, lng: 77.5946 },
-        { name: "Mysuru Division Police Unit", lat: 12.2958, lng: 76.6394 },
-        { name: "Belagavi Circle Station", lat: 15.8497, lng: 74.4977 },
-        { name: "Hubballi Sector Station", lat: 15.3647, lng: 75.1240 },
-      ];
-      mockStations.forEach((st) => {
-        const stationIcon = L.divIcon({
-          className: "custom-div-icon",
-          html: `<div class="text-emerald-400 bg-[#0d1322] border border-emerald-500/50 p-1.5 rounded-full shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          </div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11]
-        });
-        const marker = L.marker([st.lat, st.lng], { icon: stationIcon })
-          .bindPopup(`<strong class="text-slate-900 text-xs">${st.name}</strong>`);
-        markerGroup.addLayer(marker);
-      });
-    }
+  // Police stations: positioned at the median coordinate of the FIRs each one registered
+  useEffect(() => {
+    const group = stationLayerGroup.current;
+    if (!group) return;
+    group.clearLayers();
+    if (!layers.stations) return;
+    stationsInScope.forEach((station) => {
+      // Hollow emerald rings drawn beneath the FIR markers so 195 stations don't hide the incidents.
+      L.circleMarker([station.latitude, station.longitude], { radius: 8, color: "#10b981", weight: 2, fillColor: "#0d1322", fillOpacity: 0.6 })
+        .bindPopup(`<div class="text-slate-900 text-xs p-1"><strong>${escapeHtml(station.name)}</strong><br/>${station.cases} geocoded FIRs<br/><span class="text-[10px] text-slate-500">Position estimated from the FIRs it registered</span></div>`)
+        .addTo(group)
+        .bringToBack();
+    });
+  }, [stationsInScope, layers.stations]);
 
-    // 3. AI hotspots with clear sector names and tactical patrol recommendations
-    if (layers.predicted && predictedHotspots.length > 0) {
-      const sectorNames = [
-        "Sector A - Commercial Market Corridor",
-        "Sector B - High-Value Property Zone",
-        "Sector C - Highway Bypass Intersection",
-        "Sector D - Industrial Transit Hub"
-      ];
-
-      predictedHotspots.forEach((h: any, idx: number) => {
-        const multiplier = Math.sin((timeHour + idx * 4) / 4) * 0.5 + 1.0; 
-        const radius = 600 * multiplier;
-        const color = h.confidence > 0.7 ? "#ef4444" : "#f59e0b";
-        const sectorName = sectorNames[idx % sectorNames.length];
-
-        const circle = L.circle([h.latitude, h.longitude], {
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.15 + (multiplier * 0.05),
-          radius: radius,
-          weight: 1.5,
-        }).bindPopup(`
+  // KDE hotspots, drawn at the radius used to count their member FIRs
+  useEffect(() => {
+    const group = hotspotLayerGroup.current;
+    if (!group) return;
+    group.clearLayers();
+    if (!layers.predicted) return;
+    predictedHotspots.forEach((h) => {
+      const colour = HOTSPOT_COLOUR[h.risk_level] ?? "#f59e0b";
+      L.circle([h.latitude, h.longitude], { color: colour, fillColor: colour, fillOpacity: 0.12 + h.relative_density * 0.1, radius: h.radius_m, weight: 1.5 })
+        .bindPopup(`
           <div class="text-slate-900 text-xs font-sans p-1.5">
-            <strong class="text-red-600 block mb-1">${sectorName}</strong>
-            <span class="block text-[10px] text-slate-700 font-bold">KDE AI Risk Confidence: ${(h.confidence * 100).toFixed(0)}%</span>
-            <span class="block text-[10px] text-slate-500 font-mono mt-0.5">Coverage Radius: ${radius.toFixed(0)}m</span>
-            <div class="mt-1.5 p-1 bg-blue-50 border border-blue-200 rounded text-[9.5px] text-blue-800 font-mono">
-              Patrol Rec: Deploy 2 Mobile Squad Units (18:00 - 22:00)
-            </div>
-          </div>
-        `);
+            <strong class="block mb-1" style="color:${colour}">#${h.rank} ${escapeHtml(h.location_name)}</strong>
+            <span class="block text-[10px] text-slate-700 font-bold">${h.case_count} FIRs · ${h.open_cases} open · ${h.high_risk_cases} High/Severe</span>
+            <span class="block text-[10px] text-slate-500 font-mono mt-0.5">Radius ${(h.radius_m / 1000).toFixed(1)} km · density ${(h.relative_density * 100).toFixed(0)}% of the densest</span>
+            ${h.peak_window ? `<span class="block text-[10px] text-slate-600 mt-0.5">Peak incidents ${escapeHtml(h.peak_window)}</span>` : ""}
+          </div>`)
+        .on("click", () => setSelectedHotspot(h))
+        .addTo(group);
+    });
+  }, [predictedHotspots, layers.predicted]);
 
-        circle.on("click", () => {
-          setSelectedHotspot(h);
-        });
-
-        predGroup.addLayer(circle);
-
-        // Draw animated patrol routes to the active hotspots at this hour
-        if (idx === 0 && filteredPoints.length > 0) {
-          const routePoints: L.LatLngExpression[] = [
-            [12.9716, 77.5946], // From HQ
-            [h.latitude, h.longitude] // to Hotspot
-          ];
-          routeLine.setLatLngs(routePoints);
-        }
-      });
-    }
-  }, [points, predictedHotspots, layers, filters, timeHour]);
-
-  const handleHotspotClick = (h: any) => {
+  const focusHotspot = (h: PredictedHotspot) => {
     setSelectedHotspot(h);
-    if (leafletMap.current) {
-      leafletMap.current.setView([h.latitude, h.longitude], 12);
-    }
+    leafletMap.current?.setView([h.latitude, h.longitude], 12);
   };
+
+  const selectClass = "w-full bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 font-mono font-bold";
+  const toggle = (key: keyof typeof layers, label: string) => (
+    <label className="flex items-center gap-3 text-xs text-slate-300 cursor-pointer">
+      <input type="checkbox" checked={layers[key]} onChange={(e) => setLayers({ ...layers, [key]: e.target.checked })}
+        className="rounded border-[#1e293b] bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0" />
+      <span>{label}</span>
+    </label>
+  );
+  const padButton = "bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white p-2 rounded flex items-center justify-center transition-colors border border-[#334155]";
+  const south = bounds ? bounds[0][0] - BOUNDS_PADDING : 0;
+  const north = bounds ? bounds[1][0] + BOUNDS_PADDING : 1;
+  const west = bounds ? bounds[0][1] - BOUNDS_PADDING : 0;
+  const east = bounds ? bounds[1][1] + BOUNDS_PADDING : 1;
 
   return (
     <div className="flex h-full w-full gap-5 select-none relative font-sans">
-      {/* Side Filters panel */}
       <div className="w-80 bg-[#111827] border border-[#1e293b] rounded flex flex-col h-full overflow-hidden">
         {activeTab === "gis" ? (
           <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
             <div className="flex items-center gap-2 border-b border-[#1e293b] pb-3">
               <Filter className="text-blue-500" size={16} />
-              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
-                Crime Filters
-              </h3>
+              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">{t("Crime Filters", "ಅಪರಾಧ ಫಿಲ್ಟರ್‌ಗಳು")}</h3>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] uppercase font-mono text-slate-400 mb-1">District Division</label>
-                <select
-                  value={filters.district}
-                  onChange={(e) => setFilters({ ...filters, district: e.target.value })}
-                  className="w-full bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 font-mono font-bold"
-                >
-                  <option value="">All Karnataka Districts (31)</option>
-                  {Object.entries(karnatakaDistricts).map(([id, name]) => (
-                    <option key={id} value={id}>{translateData(name)}</option>
-                  ))}
+                <label className="block text-[10px] uppercase font-mono text-slate-400 mb-1">{t("District", "ಜಿಲ್ಲೆ")}</label>
+                <select value={filters.district} onChange={(e) => setFilters({ ...filters, district: e.target.value, station: "" })} className={selectClass}>
+                  <option value="">{t("All districts", "ಎಲ್ಲಾ ಜಿಲ್ಲೆಗಳು")} ({mapLayers?.districts.length ?? "…"})</option>
+                  {(mapLayers?.districts ?? []).map((d) => <option key={d.id} value={d.id}>{translateData(d.name)} ({d.cases})</option>)}
                 </select>
               </div>
-
               <div>
-                <label className="block text-[10px] uppercase font-mono text-slate-400 mb-1">IPC Crime Category</label>
-                <select
-                  value={filters.crimeType}
-                  onChange={(e) => setFilters({ ...filters, crimeType: e.target.value })}
-                  className="w-full bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 font-mono font-bold"
-                >
-                  {crimeCategoryOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{translateData(opt.label)}</option>
-                  ))}
+                <label className="block text-[10px] uppercase font-mono text-slate-400 mb-1">{t("Police station", "ಪೊಲೀಸ್ ಠಾಣೆ")}</label>
+                <select value={filters.station} onChange={(e) => setFilters({ ...filters, station: e.target.value })} className={selectClass}>
+                  <option value="">{t("All stations", "ಎಲ್ಲಾ ಠಾಣೆಗಳು")} ({stationsInScope.length})</option>
+                  {stationsInScope.map((s) => <option key={s.id} value={s.id}>{translateData(s.name)} ({s.cases})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase font-mono text-slate-400 mb-1">{t("Crime category", "ಅಪರಾಧ ವರ್ಗ")}</label>
+                <select value={filters.crimeType} onChange={(e) => setFilters({ ...filters, crimeType: e.target.value })} className={selectClass}>
+                  <option value="">{t("All crime categories", "ಎಲ್ಲಾ ವರ್ಗಗಳು")}</option>
+                  {(mapLayers?.crime_heads ?? []).map((c) => <option key={c.id} value={c.id}>{translateData(c.name)} ({c.cases})</option>)}
                 </select>
               </div>
             </div>
 
             <div className="flex items-center gap-2 border-b border-[#1e293b] pb-3 pt-2">
               <Layers className="text-blue-500" size={16} />
-              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
-                GIS Layer & Basemap Style
-              </h3>
+              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">{t("Layers & Basemap", "ಲೇಯರ್ & ಬೇಸ್‌ಮ್ಯಾಪ್")}</h3>
+            </div>
+            <div className="space-y-3">
+              <select value={mapTileStyle} onChange={(e) => setMapTileStyle(e.target.value as typeof mapTileStyle)} className={selectClass}>
+                <option value="osm">OpenStreetMap</option>
+                <option value="voyager">CartoDB Voyager</option>
+                <option value="esri">Esri World Street</option>
+              </select>
+              <div className="space-y-2 pt-1">
+                {toggle("incidents", t("FIR markers (coloured by AI risk level)", "ಎಫ್.ಐ.ಆರ್ ಗುರುತುಗಳು"))}
+                {toggle("stations", t("Police stations", "ಪೊಲೀಸ್ ಠಾಣೆಗಳು"))}
+                {toggle("predicted", t("KDE hotspots", "KDE ಹಾಟ್‌ಸ್ಪಾಟ್‌ಗಳು"))}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] uppercase font-mono text-slate-400 mb-1">GIS Basemap Style</label>
-                <select
-                  value={mapTileStyle}
-                  onChange={(e) => setMapTileStyle(e.target.value as any)}
-                  className="w-full bg-[#1e293b] border border-[#334155] text-slate-200 text-xs rounded px-2.5 py-1.5 focus:outline-none focus:border-blue-500 font-mono font-bold"
-                >
-                  <option value="osm">🏫 OSM High-Detail Streets & Schools</option>
-                  <option value="voyager">🏙️ CartoDB Voyager Bright</option>
-                  <option value="esri">🗺️ Esri World Street Precision</option>
-                </select>
+            <div className="border-t border-[#1e293b] pt-3 space-y-1.5">
+              <span className="text-[10px] uppercase font-mono text-slate-400 block">{t("Marker colour = AI risk level", "ಮಾರ್ಕರ್ ಬಣ್ಣ = AI ಅಪಾಯ ಮಟ್ಟ")}</span>
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {Object.entries(RISK_COLOUR).map(([level, colour]) => (
+                  <span key={level} className="flex items-center gap-1.5 text-[10px] text-slate-300 font-mono">
+                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: colour }} />{level}
+                  </span>
+                ))}
               </div>
-
-              <div className="space-y-2 pt-1">
-                <label className="flex items-center gap-3 text-xs text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={layers.incidents}
-                    onChange={(e) => setLayers({ ...layers, incidents: e.target.checked })}
-                    className="rounded border-[#1e293b] bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span>Active Crime Markers</span>
-                </label>
-
-                <label className="flex items-center gap-3 text-xs text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={layers.stations}
-                    onChange={(e) => setLayers({ ...layers, stations: e.target.checked })}
-                    className="rounded border-[#1e293b] bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span>Police Precinct Stations</span>
-                </label>
-
-                <label className="flex items-center gap-3 text-xs text-slate-300 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={layers.predicted}
-                    onChange={(e) => setLayers({ ...layers, predicted: e.target.checked })}
-                    className="rounded border-[#1e293b] bg-slate-900 text-blue-600 focus:ring-0 focus:ring-offset-0"
-                  />
-                  <span>AI Predicted Hotspots</span>
-                </label>
-              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                {pointData ? `${t("Showing", "ತೋರಿಸಲಾಗುತ್ತಿದೆ")} ${pointData.total_points.toLocaleString()} ${t("of", "ರಲ್ಲಿ")} ${pointData.total_matching.toLocaleString()} ${t("geocoded FIRs", "ಜಿಯೋಕೋಡ್ ಎಫ್.ಐ.ಆರ್")}${pointData.total_points < pointData.total_matching ? ` — ${t("the highest-risk ones; filter to see the rest", "ಅತಿ ಹೆಚ್ಚು ಅಪಾಯದವು; ಉಳಿದವನ್ನು ನೋಡಲು ಫಿಲ್ಟರ್ ಮಾಡಿ")}` : ""}.` : "…"}
+              </p>
             </div>
           </div>
         ) : (
           <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto">
             <div className="flex items-center gap-2 border-b border-[#1e293b] pb-3">
               <Compass className="text-red-400" size={16} />
-              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">
-                {translateData("TOP AI RISK HOTSPOTS")}
-              </h3>
+              <h3 className="text-xs font-bold text-slate-300 font-mono uppercase tracking-wider">{t("Hotspots by incident density", "ಘಟನೆ ಸಾಂದ್ರತೆಯ ಹಾಟ್‌ಸ್ಪಾಟ್‌ಗಳು")}</h3>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
               {isPredictedLoading ? (
-                <div className="text-center text-xs text-slate-500 py-8 font-mono">{translateData("Running KDE engines...")}</div>
+                <div className="text-center text-xs text-slate-500 py-8 font-mono">{t("Running kernel density estimation…", "ಲೆಕ್ಕಾಚಾರ ನಡೆಯುತ್ತಿದೆ…")}</div>
               ) : predictedHotspots.length === 0 ? (
-                <div className="text-center text-xs text-slate-500 py-8 font-mono">{translateData("No hotspots predicted.")}</div>
+                <div className="text-center text-xs text-slate-500 py-8 font-mono">{predictedData?.warning || t("No hotspots found.", "ಹಾಟ್‌ಸ್ಪಾಟ್ ಕಂಡುಬಂದಿಲ್ಲ.")}</div>
               ) : (
-                predictedHotspots.map((h: any, idx: number) => {
-                  const isHigh = h.confidence > 0.7;
-                  const primaryFactor = h.top_factors && h.top_factors[0] ? h.top_factors[0] : "High spatial incident density";
-
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => handleHotspotClick(h)}
-                      className={`p-3 rounded border transition-all cursor-pointer ${
-                        selectedHotspot === h
-                          ? "bg-blue-600/10 border-blue-500/50"
-                          : "bg-[#151c2e] border-transparent hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-bold text-slate-200">{translateData(`Zone #${idx + 1}`)}</span>
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
-                          isHigh ? "text-red-400 bg-red-500/10 border border-red-500/20" :
-                          "text-amber-400 bg-amber-500/10 border border-amber-500/20"
-                        }`}>
-                          {(h.confidence * 100).toFixed(0)}% {translateData("AI Risk Score")}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-blue-400 font-semibold mb-1 leading-tight">
-                        {translateData(primaryFactor)}
-                      </p>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        {translateData("Nearby FIR Volume")}: <strong className="text-emerald-400">{h.nearby_case_count || translateData("Multi-FIR")} {translateData("cases")}</strong>
-                      </p>
+                predictedHotspots.map((h) => (
+                  <div key={h.rank} onClick={() => focusHotspot(h)}
+                    className={`p-3 rounded border transition-all cursor-pointer ${selectedHotspot?.rank === h.rank ? "bg-blue-600/10 border-blue-500/50" : "bg-[#151c2e] border-transparent hover:border-slate-700"}`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs font-bold text-slate-200">#{h.rank} {translateData(h.location_name)}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold border" style={{ color: HOTSPOT_COLOUR[h.risk_level], borderColor: `${HOTSPOT_COLOUR[h.risk_level]}55`, background: `${HOTSPOT_COLOUR[h.risk_level]}18` }}>
+                        {h.risk_level}
+                      </span>
                     </div>
-                  );
-                })
+                    <p className="text-[11px] text-blue-400 font-semibold mb-1 leading-tight">{h.district_name ? translateData(h.district_name) : ""}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      <strong className="text-emerald-400">{h.case_count}</strong> {t("FIRs", "ಎಫ್.ಐ.ಆರ್")} · {h.open_cases} {t("open", "ತೆರೆದಿರುವ")} · {h.high_risk_cases} {t("High/Severe", "ಹೆಚ್ಚು/ತೀವ್ರ")}
+                    </p>
+                  </div>
+                ))
               )}
             </div>
 
             {selectedHotspot && (
               <div className="border-t border-[#1e293b] pt-3.5 mt-auto space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">{translateData("Zone Intelligence Report")}</h4>
-                  <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono font-bold">
-                    KDE Model
-                  </span>
+                  <h4 className="text-xs font-bold text-slate-200 font-mono uppercase tracking-wider">{t("Hotspot evidence", "ಹಾಟ್‌ಸ್ಪಾಟ್ ಪುರಾವೆ")}</h4>
+                  <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono font-bold">KDE</span>
                 </div>
                 <div className="space-y-1.5 text-[11px] leading-relaxed bg-[#151c2e] p-2.5 rounded border border-[#1e293b]">
                   <div className="flex justify-between border-b border-[#1e293b] pb-1">
-                    <span className="text-slate-400 font-mono">AI Confidence:</span>
-                    <span className="text-emerald-400 font-bold font-mono">{(selectedHotspot.confidence * 100).toFixed(0)}%</span>
+                    <span className="text-slate-400 font-mono">{t("Density vs densest", "ಸಾಂದ್ರತೆ")}:</span>
+                    <span className="text-emerald-400 font-bold font-mono">{(selectedHotspot.relative_density * 100).toFixed(0)}%</span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 font-mono block mb-0.5">Database Risk Drivers:</span>
-                    <ul className="text-slate-300 font-mono text-[10px] list-disc pl-3.5 space-y-0.5">
-                      {selectedHotspot.top_factors && selectedHotspot.top_factors.map((factor: string, fIdx: number) => (
-                        <li key={fIdx}>{factor}</li>
-                      ))}
-                      <li>Spatial KDE Cluster Radius: ~2.2 km</li>
-                    </ul>
-                  </div>
-                  <div className="pt-1 border-t border-[#1e293b]">
-                    <span className="text-blue-400 font-bold block text-[10px]">Patrol Action Required:</span>
-                    <span className="text-slate-300 text-[10px]">Deploy 2 Patrol Vehicles & Night Beat Officers for this primary crime head.</span>
-                  </div>
+                  <ul className="text-slate-300 font-mono text-[10px] list-disc pl-3.5 space-y-0.5">
+                    {selectedHotspot.top_factors.map((factor, i) => <li key={i}>{factor}</li>)}
+                    {selectedHotspot.repeat_offender_profiles > 0 && <li>{selectedHotspot.repeat_offender_profiles} {t("repeat-offender profile(s) involved", "ಪುನರಾವರ್ತಿತ ಅಪರಾಧಿ ಪ್ರೊಫೈಲ್‌ಗಳು")}</li>}
+                  </ul>
                 </div>
               </div>
             )}
@@ -544,208 +324,84 @@ export default function Hotspot({ activeTab = "gis" }: HotspotProps) {
         )}
       </div>
 
-      {/* Main Map with bottom time slider */}
       <div className="flex-1 bg-[#111827] border border-[#1e293b] rounded overflow-hidden relative flex flex-col">
         <div className="flex-1 w-full z-10 relative">
           <div ref={mapRef} className="h-full w-full" />
 
-          {/* Directional Pan Navigation Controls Overlay */}
           <div className="absolute top-4 right-4 z-20 flex flex-col items-center gap-1.5 bg-[#0d1322]/90 border border-[#1e293b] p-2.5 rounded shadow-2xl backdrop-blur select-none">
-            <span className="text-[9px] font-mono font-bold text-blue-400 uppercase tracking-widest mb-0.5">
-              GIS Navigation Pad
-            </span>
+            <span className="text-[9px] font-mono font-bold text-blue-400 uppercase tracking-widest mb-0.5">{t("Map navigation", "ನಕ್ಷೆ ನ್ಯಾವಿಗೇಶನ್")}</span>
             <div className="grid grid-cols-3 gap-1 w-28">
               <div></div>
-              <button
-                onClick={() => leafletMap.current?.panBy([0, -150])}
-                title="Pan North (Up)"
-                className="bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white p-2 rounded flex items-center justify-center transition-colors border border-[#334155]"
-              >
-                <ChevronUp size={16} />
-              </button>
+              <button onClick={() => leafletMap.current?.panBy([0, -150])} title="North" className={padButton}><ChevronUp size={16} /></button>
               <div></div>
-              <button
-                onClick={() => leafletMap.current?.panBy([-150, 0])}
-                title="Pan West (Left)"
-                className="bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white p-2 rounded flex items-center justify-center transition-colors border border-[#334155]"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={() => leafletMap.current?.setView([14.5204, 75.7224], 8)}
-                title="Reset Karnataka View"
-                className="bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white p-2 rounded flex items-center justify-center transition-colors border border-[#334155]"
-              >
-                <Compass size={16} />
-              </button>
-              <button
-                onClick={() => leafletMap.current?.panBy([150, 0])}
-                title="Pan East (Right)"
-                className="bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white p-2 rounded flex items-center justify-center transition-colors border border-[#334155]"
-              >
-                <ChevronRight size={16} />
-              </button>
+              <button onClick={() => leafletMap.current?.panBy([-150, 0])} title="West" className={padButton}><ChevronLeft size={16} /></button>
+              <button onClick={() => bounds && leafletMap.current?.fitBounds(bounds)} title={t("Fit all FIRs", "ಎಲ್ಲಾ ಎಫ್.ಐ.ಆರ್ ತೋರಿಸಿ")} className={padButton}><Compass size={16} /></button>
+              <button onClick={() => leafletMap.current?.panBy([150, 0])} title="East" className={padButton}><ChevronRight size={16} /></button>
               <div></div>
-              <button
-                onClick={() => leafletMap.current?.panBy([0, 150])}
-                title="Pan South (Down)"
-                className="bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white p-2 rounded flex items-center justify-center transition-colors border border-[#334155]"
-              >
-                <ChevronDown size={16} />
-              </button>
+              <button onClick={() => leafletMap.current?.panBy([0, 150])} title="South" className={padButton}><ChevronDown size={16} /></button>
               <div></div>
             </div>
             <div className="flex gap-1.5 w-full mt-1">
-              <button
-                onClick={() => leafletMap.current?.zoomIn()}
-                className="flex-1 bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white py-1.5 rounded text-[11px] font-mono font-bold flex items-center justify-center gap-1 border border-[#334155]"
-              >
-                <ZoomIn size={13} /> +
-              </button>
-              <button
-                onClick={() => leafletMap.current?.zoomOut()}
-                className="flex-1 bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white py-1.5 rounded text-[11px] font-mono font-bold flex items-center justify-center gap-1 border border-[#334155]"
-              >
-                <ZoomOut size={13} /> -
-              </button>
+              <button onClick={() => leafletMap.current?.zoomIn()} className="flex-1 bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white py-1.5 rounded text-[11px] font-mono font-bold flex items-center justify-center gap-1 border border-[#334155]"><ZoomIn size={13} /> +</button>
+              <button onClick={() => leafletMap.current?.zoomOut()} className="flex-1 bg-[#1e293b] hover:bg-blue-600 text-slate-200 hover:text-white py-1.5 rounded text-[11px] font-mono font-bold flex items-center justify-center gap-1 border border-[#334155]"><ZoomOut size={13} /> -</button>
             </div>
           </div>
 
-          {/* Vertical (North-South / Latitude) Scrollbar Track matching user's screenshot */}
-          <div className="absolute right-3 top-24 bottom-16 w-7 z-20 flex flex-col items-center bg-[#0d1322]/95 border border-[#1e293b] rounded py-1.5 px-1 shadow-2xl backdrop-blur">
-            <button
-              onClick={() => leafletMap.current?.panBy([0, -120])}
-              title="Pan North (Up)"
-              className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors mb-1"
-            >
-              <ChevronUp size={14} />
-            </button>
+          {bounds && (
+            <>
+              <div className="absolute right-3 top-24 bottom-16 w-7 z-20 flex flex-col items-center bg-[#0d1322]/95 border border-[#1e293b] rounded py-1.5 px-1 shadow-2xl backdrop-blur">
+                <button onClick={() => leafletMap.current?.panBy([0, -120])} title="North" className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors mb-1"><ChevronUp size={14} /></button>
+                <div className="flex-1 w-full flex items-center justify-center py-1">
+                  <input type="range" min={south} max={north} step="0.02" value={Math.min(north, Math.max(south, centre[0]))}
+                    onChange={(e) => leafletMap.current?.setView([parseFloat(e.target.value), centre[1]], leafletMap.current.getZoom(), { animate: false })}
+                    className="h-full w-3 appearance-none bg-[#151c2e] border border-[#334155] rounded-full cursor-pointer accent-blue-500 shadow-inner" style={{ writingMode: "vertical-lr", direction: "rtl" }} />
+                </div>
+                <button onClick={() => leafletMap.current?.panBy([0, 120])} title="South" className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors mt-1"><ChevronDown size={14} /></button>
+              </div>
 
-            <div className="flex-1 w-full flex items-center justify-center py-1">
-              <input
-                type="range"
-                min="11.2"
-                max="18.9"
-                step="0.02"
-                value={currentLat}
-                onChange={(e) => {
-                  const newLat = parseFloat(e.target.value);
-                  setCurrentLat(newLat);
-                  if (leafletMap.current) {
-                    leafletMap.current.setView([newLat, currentLng], leafletMap.current.getZoom(), { animate: false });
-                  }
-                }}
-                className="h-full w-3 appearance-none bg-[#151c2e] border border-[#334155] rounded-full cursor-pointer accent-blue-500 shadow-inner"
-                style={{ writingMode: "vertical-lr", direction: "rtl" }}
-              />
-            </div>
-
-            <button
-              onClick={() => leafletMap.current?.panBy([0, 120])}
-              title="Pan South (Down)"
-              className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors mt-1"
-            >
-              <ChevronDown size={14} />
-            </button>
-          </div>
-
-          {/* Horizontal (West-East / Longitude) Scrollbar Track matching user's screenshot */}
-          <div className="absolute bottom-2 left-6 right-24 h-8 z-20 flex items-center bg-[#0d1322]/95 border border-[#1e293b] rounded px-2 py-1 shadow-2xl backdrop-blur">
-            <button
-              onClick={() => leafletMap.current?.panBy([-120, 0])}
-              title="Pan West (Left)"
-              className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors mr-2"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <input
-              type="range"
-              min="73.8"
-              max="78.8"
-              step="0.02"
-              value={currentLng}
-              onChange={(e) => {
-                const newLng = parseFloat(e.target.value);
-                setCurrentLng(newLng);
-                if (leafletMap.current) {
-                  leafletMap.current.setView([currentLat, newLng], leafletMap.current.getZoom(), { animate: false });
-                }
-              }}
-              className="flex-1 h-2.5 appearance-none bg-[#151c2e] border border-[#334155] rounded-full cursor-pointer accent-blue-500 shadow-inner"
-            />
-
-            <button
-              onClick={() => leafletMap.current?.panBy([120, 0])}
-              title="Pan East (Right)"
-              className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors ml-2"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
+              <div className="absolute bottom-2 left-6 right-24 h-8 z-20 flex items-center bg-[#0d1322]/95 border border-[#1e293b] rounded px-2 py-1 shadow-2xl backdrop-blur">
+                <button onClick={() => leafletMap.current?.panBy([-120, 0])} title="West" className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors mr-2"><ChevronLeft size={16} /></button>
+                <input type="range" min={west} max={east} step="0.02" value={Math.min(east, Math.max(west, centre[1]))}
+                  onChange={(e) => leafletMap.current?.setView([centre[0], parseFloat(e.target.value)], leafletMap.current.getZoom(), { animate: false })}
+                  className="flex-1 h-2.5 appearance-none bg-[#151c2e] border border-[#334155] rounded-full cursor-pointer accent-blue-500 shadow-inner" />
+                <button onClick={() => leafletMap.current?.panBy([120, 0])} title="East" className="text-slate-300 hover:text-white hover:bg-blue-600 p-1 rounded transition-colors ml-2"><ChevronRight size={16} /></button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Bottom sliding intelligence drawer */}
         {selectedHotspot && (
-          <div className="absolute bottom-20 left-4 right-4 bg-[#0d1322]/95 border border-blue-500/30 rounded shadow-2xl p-4 z-20 flex justify-between items-center gap-6 animate-slide-up select-none backdrop-blur">
+          <div className="absolute bottom-20 left-4 right-4 bg-[#0d1322]/95 border border-blue-500/30 rounded shadow-2xl p-4 z-20 flex justify-between items-center gap-6 select-none backdrop-blur">
             <div className="flex-1 space-y-1">
               <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider">
-                AI Hotspot Zone Intelligence Match
+                #{selectedHotspot.rank} · {selectedHotspot.risk_level}
               </span>
               <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider ml-2">
-                kernel_density · {predictedData?.model_version || "phase4-kde-hotspot-v1"}
+                kernel_density · {predictedData?.model_version}
               </span>
               <h4 className="text-xs font-bold text-slate-100 font-mono mt-1">
-                Location Coordinates: {selectedHotspot.latitude.toFixed(4)} N, {selectedHotspot.longitude.toFixed(4)} E
+                {translateData(selectedHotspot.location_name)} — {selectedHotspot.latitude.toFixed(4)} N, {selectedHotspot.longitude.toFixed(4)} E
               </h4>
-              <div className="flex flex-wrap gap-2 text-[10px] text-slate-400">
-                <span>Confidence Rank: <strong className="text-emerald-400 font-mono">{(selectedHotspot.confidence * 100).toFixed(0)}%</strong></span>
-                <span>•</span>
-                <span>Contributing Risk Factors: <strong className="text-blue-400 font-mono">{selectedHotspot.top_factors?.join(", ") || "Historical density peaks"}</strong></span>
-              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">{selectedHotspot.reason}</p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  if (leafletMap.current) {
-                    leafletMap.current.setView([selectedHotspot.latitude, selectedHotspot.longitude], 13);
-                  }
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold font-mono px-3 py-1.5 rounded transition-colors"
-              >
-                Recenter GIS View
-              </button>
-              <button
-                onClick={() => setSelectedHotspot(null)}
-                className="text-slate-500 hover:text-slate-300 text-xs font-bold font-mono px-2 py-1"
-              >
-                Dismiss
-              </button>
+              <button onClick={() => leafletMap.current?.setView([selectedHotspot.latitude, selectedHotspot.longitude], 13)}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold font-mono px-3 py-1.5 rounded transition-colors">{t("Recentre", "ಮರುಕೇಂದ್ರೀಕರಿಸಿ")}</button>
+              <button onClick={() => setSelectedHotspot(null)} className="text-slate-500 hover:text-slate-300 text-xs font-bold font-mono px-2 py-1">{t("Dismiss", "ಮುಚ್ಚಿ")}</button>
             </div>
           </div>
         )}
 
-        {/* Clean Bottom Status Bar */}
         <div className="bg-[#0f1422] border-t border-[#1e293b] px-4 py-2.5 flex items-center justify-between z-20">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-            <span className="text-xs font-mono font-bold text-slate-300">Live Spatial Hotspot Analytics</span>
+            <span className={`w-2.5 h-2.5 rounded-full inline-block ${isPointsLoading ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+            <span className="text-xs font-mono font-bold text-slate-300">{t("Spatial analytics", "ಸ್ಥಳೀಯ ವಿಶ್ಲೇಷಣೆ")}</span>
           </div>
           <div className="text-[11px] font-mono text-slate-400">
-            Real Spatial Kernel Density Incident Mapping (Karnataka State Registry)
+            {mapLayers ? `${mapLayers.geocoded_cases.toLocaleString()} ${t("geocoded FIRs registered up to", "ಜಿಯೋಕೋಡ್ ಎಫ್.ಐ.ಆರ್, ದಿನಾಂಕದವರೆಗೆ")} ${mapLayers.as_of_date}` : "…"}
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        .animate-slide-up {
-          animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
     </div>
   );
 }

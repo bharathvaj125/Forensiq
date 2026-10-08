@@ -1,9 +1,4 @@
-/**
- * Typed client for risk/similarity/repeat-offender endpoints. Used by: corresponding module's hooks/components.
- *
- * NOTE: Scaffold placeholder only. Implementation to be added
- * during the corresponding roadmap milestone.
- */
+/** Client for the risk, anomaly, forecast, similarity and repeat-offender endpoints. */
 
 import { apiClient } from "./apiClient";
 

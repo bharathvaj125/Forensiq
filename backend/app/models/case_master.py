@@ -26,8 +26,10 @@ class CaseMaster(Base):
     BriefFacts = Column(Text)
 
     # --- Metadata Extensions ---
-    InvestigationPriority = Column(String, default="Medium")
-    AIRiskScore = Column(Float, default=0.0)
+    InvestigationPriority = Column(String, nullable=True)
+    AIRiskScore = Column(Float, nullable=True)  # P(High or Severe) from the risk model
+    AIRiskLevel = Column(String, nullable=True)  # Low / Medium / High / Severe
+    AIRiskModelVersion = Column(String, nullable=True)
     CaseSensitivity = Column(String, default="Standard")
     UpdatedAt = Column(DateTime(timezone=True), onupdate=func.now())
     CreatedBy = Column(Integer, ForeignKey("users.UserID"), nullable=True)

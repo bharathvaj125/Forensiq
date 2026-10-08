@@ -32,8 +32,16 @@ class CriminalRelationship(BaseModel):
 
 class GangCommunity(BaseModel):
     MemberPersonIDs: List[int]
-    Confidence: float
+    Confidence: float  # mean strength of the links inside the community (0-1)
     Explanation: str
+    Size: Optional[int] = None
+    Density: Optional[float] = None
+    LeaderPersonID: Optional[int] = None
+    LeaderName: Optional[str] = None
+    LeaderPageRank: Optional[float] = None
+    MemberNames: List[str] = []
+    CaseCount: Optional[int] = None
+    RecordedGangs: List[str] = []  # registry GangID labels found among the members, e.g. "GNG0004 (6 members)"
 
 
 class GangCommunityResponse(BaseModel):
@@ -48,7 +56,7 @@ class GraphNodeData(BaseModel):
     sub_type: Optional[str] = "Standard"
     centrality: int = 1
     case_count: int = 1
-    risk_score: float = 0.5
+    risk_score: Optional[float] = None  # only set where the data supports one (FIRs: the model score)
     details: str
     ai_summary: Optional[str] = None
     age: Optional[int] = None
@@ -76,4 +84,4 @@ class NetworkGraphResponse(BaseModel):
     total_nodes: int
     total_edges: int
     gang_count: int = 0
-    model_version: str = "ksp-graph-intelligence-v2"
+    model_version: str = "network-graph-v3"

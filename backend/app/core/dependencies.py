@@ -37,8 +37,8 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # Check Authorization header first, fallback to query parameter 'token'
-    token = header_token or request.query_params.get("token")
+    # The token is accepted only in the Authorization header: tokens in URLs leak into logs and browser history.
+    token = header_token
     if not token:
         raise credentials_exception
 

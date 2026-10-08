@@ -20,7 +20,7 @@ export default function ProtectedRoute({ children, requiredRoles }: ProtectedRou
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
           <span className="text-sm font-semibold tracking-wider uppercase text-blue-500 font-mono">
-            KSP Command Center Security Telemetry...
+            Checking your session...
           </span>
         </div>
       </div>

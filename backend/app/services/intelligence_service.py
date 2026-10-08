@@ -1,19 +1,19 @@
-"""Core Backend orchestration for Phase 4 intelligence features."""
+"""Core Backend orchestration for the intelligence features: risk, anomalies, forecasts,
+repeat-offender linkage and semantic case similarity. No fallbacks: when a model or the database
+cannot do the job the caller gets an error, never an invented answer."""
 
-from collections.abc import Iterable
-from datetime import date, timedelta
-
-import httpx
 from fastapi import HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.middleware.jurisdiction_scope import apply_jurisdiction_filter
+from app.ml.features import case_feature_frame, reporting_delay_hours
+from app.models.accused import Accused
 from app.models.case_embedding import CaseEmbedding
 from app.models.case_master import CaseMaster
-from app.models.accused import Accused
 from app.models.user import User
-from app.services import ai_audit_service
+from app.services import ai_audit_service, cache, reference_data
 
 
 def _embed_texts(texts: list[str]) -> list[list[float]]:
@@ -22,220 +22,191 @@ def _embed_texts(texts: list[str]) -> list[list[float]]:
     return gemini_embed_texts(texts, dimensions=768)
 
 
+def _model_unavailable(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Model unavailable: {exc}")
+
+
+# ----------------------------------------------------------------------------------------- risk
+
 def predict_case_risk(db: Session, case: CaseMaster, current_user: User) -> dict:
-    """Build safe case features and obtain a model-backed or heuristic explainable risk score."""
-    from datetime import datetime, time
-    registration_date = case.CrimeRegisteredDate or date.today()
-    reg_dt = datetime.combine(registration_date, time.min)
-    case_age = max(0, (date.today() - registration_date).days)
-    if case.IncidentFromDate:
-        reporting_delay = max(0.0, (reg_dt - case.IncidentFromDate).total_seconds() / 3600)
-    else:
-        reporting_delay = 0.0
-    payload = {
-        "gravity_offence_id": case.GravityOffenceID or 1,
-        "reporting_delay_hours": reporting_delay,
-        "case_age_days": case_age,
-        "number_of_accused": len(case.accused_list),
-        "number_of_evidence_items": len(case.evidence_items),
-        "investigation_priority": case.InvestigationPriority or "Medium",
-    }
-    result = None
+    """Score one case with the risk model, explain it, and persist the score."""
+    from app.ml.models.risk_scoring import scorer
     try:
-        from app.ml.models.risk_scoring.scorer import predict_risk
-        result = predict_risk(payload)
-    except Exception:
-        base_score = 0.35 + (case.GravityOffenceID or 1) * 0.10 + len(case.accused_list) * 0.08
-        if case.InvestigationPriority == "High":
-            base_score += 0.15
-        score = round(min(0.95, max(0.10, base_score)), 2)
-        result = {
-            "score": score,
-            "risk_level": "High" if score >= 0.70 else ("Medium" if score >= 0.40 else "Low"),
-            "model_version": "phase4-risk-rf-v1",
-            "top_factors": [
-                {"feature_name": "GravityOffenceID", "impact_score": 0.45, "description": "High gravity offence classification"},
-                {"feature_name": "ReportingDelayHours", "impact_score": 0.30, "description": "Extended reporting delay"},
-                {"feature_name": "AccusedCount", "impact_score": 0.25, "description": "Multiple accused individuals listed"}
-            ]
-        }
+        row = case_feature_frame(db, [case]).iloc[0].to_dict()
+        result = scorer.predict_risk(row, reference_data.risk_value_labels(db))
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise _model_unavailable(exc)
 
     case.AIRiskScore = result["score"]
+    case.AIRiskLevel = result["risk_level"]
+    case.AIRiskModelVersion = result["model_version"]
+    if case.InvestigationPriority is None:
+        case.InvestigationPriority = result["priority"]
     db.commit()
-    ai_audit_service.log_ai_run(db, current_user.UserID, "risk_score", "random_forest", result["model_version"], str(case.CaseMasterID), {"score": result["score"]})
+    cache.clear()
+    ai_audit_service.log_ai_run(db, current_user.UserID, "risk_score", "random_forest", result["model_version"],
+                                str(case.CaseMasterID), {"score": result["score"], "level": result["risk_level"]})
     return result
 
+
+# ------------------------------------------------------------------------------------- forecast
 
 def forecast_crime_trend(db: Session, current_user: User, horizon_days: int) -> dict:
-    """Send jurisdiction-scoped registration dates to the forecasting model or fallback regression."""
-    query = db.query(CaseMaster).filter(CaseMaster.CrimeRegisteredDate.isnot(None))
+    """Ridge-regression trend over daily registration counts of the cases the caller may see."""
+    from app.ml.models.forecasting.forecaster import forecast_crime_trend as predict_trend
+    from datetime import date
+
+    query = db.query(CaseMaster.CrimeRegisteredDate).filter(
+        CaseMaster.CrimeRegisteredDate.isnot(None), CaseMaster.CrimeRegisteredDate <= date.today()
+    )
     query = apply_jurisdiction_filter(query, db, current_user)
-    registration_dates = [case.CrimeRegisteredDate.isoformat() for case in query.all()]
-    if not registration_dates:
-        return {"model_version": "phase4-trend-regression-v1", "trend": "stable", "points": []}
-    
-    result = None
-    try:
-        from app.ml.models.forecasting.forecaster import forecast_crime_trend as predict_trend
-        result = predict_trend(registration_dates, horizon_days)
-    except Exception:
-        result = None
-
-    if not result:
-        today_dt = date.today()
-        points = []
-        for i in range(min(horizon_days, 14)):
-            future_d = today_dt + timedelta(days=i+1)
-            predicted_cnt = max(1, int(len(registration_dates) * 0.05) + (i % 3))
-            points.append({"date": future_d.isoformat(), "predicted_cases": predicted_cnt})
-        result = {
-            "model_version": "phase4-trend-regression-v1",
-            "trend": "increasing" if len(registration_dates) > 10 else "stable",
-            "points": points
-        }
-
-    ai_audit_service.log_ai_run(db, current_user.UserID, "crime_forecast", "linear_regression", result["model_version"], None, {"horizon_days": horizon_days, "trend": result["trend"]})
+    registration_dates = [row[0].isoformat() for row in query.all()]
+    result = predict_trend(registration_dates, horizon_days)
+    ai_audit_service.log_ai_run(db, current_user.UserID, "crime_forecast", "ridge_regression", result["model_version"],
+                                None, {"horizon_days": horizon_days, "trend": result["trend"]})
     return result
+
+
+# -------------------------------------------------------------------------- repeat offenders
+
+def _accused_record(accused: Accused, case: CaseMaster) -> dict:
+    return {
+        "id": accused.AccusedMasterID,
+        "name": accused.AccusedName,
+        "age": accused.AgeYear,
+        "gender": accused.GenderID,
+        "occupation": accused.Occupation,
+        "address": accused.Address,
+        "station_id": case.PoliceStationID,
+        "registered": case.CrimeRegisteredDate,
+        "profile": accused.CriminalProfileID,
+        "case_id": case.CaseMasterID,
+        "case_no": case.CaseNo,
+    }
 
 
 def resolve_repeat_offenders(db: Session, accused_id: int, current_user: User) -> dict:
-    """Find likely matching accused profiles without bypassing case jurisdiction scope."""
-    source = db.query(Accused).join(CaseMaster).filter(Accused.AccusedMasterID == accused_id)
-    source = apply_jurisdiction_filter(source, db, current_user, model_class=CaseMaster).first()
-    if not source:
+    """Records that belong to the same person as this accused.
+
+    Confirmed: same recorded criminal profile. Probable: the trained linkage model scores name,
+    age, district, occupation and station similarity over a blocked candidate set."""
+    from app.ml.models.repeat_offender import linkage
+
+    scoped = db.query(Accused, CaseMaster).join(CaseMaster, Accused.CaseMasterID == CaseMaster.CaseMasterID)
+    scoped = apply_jurisdiction_filter(scoped, db, current_user, model_class=CaseMaster)
+    found = scoped.filter(Accused.AccusedMasterID == accused_id).first()
+    if not found:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Accused profile not found or access denied.")
-    visible = db.query(Accused).join(CaseMaster)
-    visible = apply_jurisdiction_filter(visible, db, current_user, model_class=CaseMaster).all()
-    counts: dict[int, int] = {}
-    for profile_item in visible:
-        if profile_item.PersonID:
-            counts[profile_item.PersonID] = counts.get(profile_item.PersonID, 0) + 1
+    source, source_case = found
+    source_record = _accused_record(source, source_case)
 
-    def profile_fn(item: Accused) -> dict:
-        return {"accused_master_id": item.AccusedMasterID, "name": item.AccusedName, "age": item.AgeYear,
-                "gender_id": item.GenderID, "person_id": item.PersonID, "case_count": counts.get(item.PersonID, 1)}
-
-    result = None
-    try:
-        with httpx.Client(timeout=5.0) as client:
-            response = client.post(f"{settings.AI_ENGINE_BASE_URL}/ai/v1/repeat-offenders/resolve", json={
-                "source": profile_fn(source), "candidates": [profile_fn(item) for item in visible],
+    matches = []
+    confirmed_ids = {source.AccusedMasterID}
+    if source.CriminalProfileID:
+        same_profile = scoped.filter(Accused.CriminalProfileID == source.CriminalProfileID,
+                                     Accused.AccusedMasterID != source.AccusedMasterID).all()
+        for accused, case in same_profile:
+            confirmed_ids.add(accused.AccusedMasterID)
+            matches.append({
+                "accused_master_id": accused.AccusedMasterID, "confidence": 1.0, "linkage": "Confirmed",
+                "factors": [f"Same recorded criminal profile (CP{source.CriminalProfileID:05d})"],
+                "accused_name": accused.AccusedName, "case_master_id": case.CaseMasterID, "case_no": case.CaseNo,
             })
-            if response.status_code == 200:
-                result = response.json()
-    except Exception:
-        pass
 
-    if not result:
-        matches = []
-        for cand in visible:
-            if cand.AccusedMasterID == source.AccusedMasterID:
-                continue
-            conf = 0.0
-            factors = []
-            if source.PersonID and cand.PersonID and source.PersonID == cand.PersonID:
-                conf += 0.85
-                factors.append("Matching National Fingerprint / PersonID")
-            elif source.AccusedName and cand.AccusedName and source.AccusedName.strip().lower() == cand.AccusedName.strip().lower():
-                conf += 0.70
-                factors.append("Identical Name Alias")
-            if conf > 0.0:
-                matches.append({
-                    "accused_master_id": cand.AccusedMasterID,
-                    "confidence": conf,
-                    "factors": factors
-                })
-        result = {"model_version": "phase4-entity-resolution-v1", "matches": matches}
+    prefix = linkage.normalise_name(source.AccusedName)[:linkage.BLOCK_PREFIX]
+    candidate_query = scoped.filter(func.lower(Accused.AccusedName).like(f"{prefix}%"),
+                                    Accused.AccusedMasterID.notin_(confirmed_ids))
+    if source.GenderID is not None:
+        candidate_query = candidate_query.filter(Accused.GenderID == source.GenderID)
+    if source.CriminalProfileID:
+        candidate_query = candidate_query.filter(
+            (Accused.CriminalProfileID.is_(None)) | (Accused.CriminalProfileID != source.CriminalProfileID)
+        )
+    candidates = [_accused_record(accused, case) for accused, case in candidate_query.all()]
+    try:
+        probable = linkage.link_candidates(source_record, candidates)
+    except FileNotFoundError as exc:
+        raise _model_unavailable(exc)
+    for item in probable:
+        record = item["record"]
+        matches.append({
+            "accused_master_id": record["id"], "confidence": item["confidence"], "linkage": "Probable",
+            "factors": item["factors"], "accused_name": record["name"],
+            "case_master_id": record["case_id"], "case_no": record["case_no"],
+        })
 
-    response_payload = {"ModelVersion": result["model_version"], "Matches": [
-        {"AccusedMasterID": item["accused_master_id"], "Confidence": item["confidence"], "Factors": item["factors"]}
-        for item in result["matches"]
+    matches = sorted(matches, key=lambda item: (item["linkage"] != "Confirmed", -item["confidence"]))[:25]
+    version = linkage.load_artifact()["version"]
+    ai_audit_service.log_ai_run(db, current_user.UserID, "repeat_offender", "pairwise_linkage", version,
+                                str(accused_id), {"match_count": len(matches)})
+    return {"ModelVersion": version, "Matches": [
+        {"AccusedMasterID": m["accused_master_id"], "Confidence": m["confidence"], "Factors": m["factors"],
+         "Linkage": m["linkage"], "AccusedName": m["accused_name"], "CaseMasterID": m["case_master_id"], "CaseNo": m["case_no"]}
+        for m in matches
     ]}
-    ai_audit_service.log_ai_run(db, current_user.UserID, "repeat_offender", "entity_resolution", result["model_version"], str(accused_id), {"match_count": len(result["matches"])})
-    return response_payload
 
+
+# ------------------------------------------------------------------------------------ anomalies
 
 def detect_case_anomalies(db: Session, current_user: User) -> dict:
-    """Detect unusual investigation signals among cases visible to the caller."""
-    query = apply_jurisdiction_filter(db.query(CaseMaster), db, current_user)
-    cases = query.order_by(CaseMaster.CaseMasterID.desc()).limit(100).all()
-    if not cases:
-        return {"ModelVersion": "phase4-isolation-forest-v1", "Findings": []}
-    payload_cases = []
-    for case in cases:
-        incident_date = case.IncidentFromDate.date() if case.IncidentFromDate else case.CrimeRegisteredDate
-        delay = max(0.0, (case.CrimeRegisteredDate - incident_date).total_seconds() / 3600) if incident_date else 0.0
-        payload_cases.append({"case_master_id": case.CaseMasterID, "reporting_delay_hours": delay,
-                              "number_of_accused": len(case.accused_list), "number_of_evidence_items": len(case.evidence_items)})
-    
-    result = None
-    try:
-        from app.ml.models.anomaly.detector import detect_anomalies
-        findings = detect_anomalies(payload_cases)
-        result = {"model_version": "phase4-isolation-forest-v1", "findings": findings}
-    except Exception:
-        result = None
+    """Flag cases reported unusually late relative to every case the caller can see."""
+    from app.ml.models.anomaly.detector import MODEL_VERSION, MODIFIED_Z_CUTOFF, detect_anomalies
 
-    if not result:
-        findings = []
-        for c_dict in payload_cases:
-            if c_dict["reporting_delay_hours"] > 48.0 or c_dict["number_of_accused"] >= 2:
-                findings.append({
-                    "case_master_id": c_dict["case_master_id"],
-                    "anomaly_score": 0.82,
-                    "factors": ["Unusual reporting delay (>48h)" if c_dict["reporting_delay_hours"] > 48.0 else "High accused concentration"]
-                })
-        result = {"model_version": "phase4-isolation-forest-v1", "findings": findings}
+    cases = apply_jurisdiction_filter(db.query(CaseMaster), db, current_user).all()
+    payload = [{
+        "case_master_id": case.CaseMasterID,
+        "reporting_delay_hours": reporting_delay_hours(case.IncidentFromDate, case.InfoReceivedPSDate, case.CrimeRegisteredDate),
+    } for case in cases]
+    findings = detect_anomalies(payload)
+    case_numbers = {case.CaseMasterID: case.CaseNo for case in cases}
 
-    response_payload = {"ModelVersion": result.get("model_version", "phase4-isolation-forest-v1"), "Findings": [
-        {"CaseMasterID": item["case_master_id"], "AnomalyScore": item["anomaly_score"], "Factors": item["factors"]}
-        for item in result.get("findings", [])
-    ]}
-    ai_audit_service.log_ai_run(db, current_user.UserID, "anomaly_detection", "isolation_forest", result.get("model_version", "v1"), None, {"finding_count": len(result.get("findings", []))})
-    return response_payload
+    ai_audit_service.log_ai_run(db, current_user.UserID, "anomaly_detection", "robust_z_score", MODEL_VERSION, None,
+                                {"cases_analysed": len(cases), "finding_count": len(findings)})
+    return {
+        "ModelVersion": MODEL_VERSION,
+        "CasesAnalysed": len(cases),
+        "Cutoff": MODIFIED_Z_CUTOFF,
+        "Findings": [
+            {"CaseMasterID": item["case_master_id"], "AnomalyScore": item["anomaly_score"], "ZScore": item["z_score"],
+             "Factors": item["factors"], "CaseNo": case_numbers.get(item["case_master_id"])}
+            for item in findings
+        ],
+    }
 
 
-def _chunks(items: list[CaseMaster], size: int = 32) -> Iterable[list[CaseMaster]]:
-    for start in range(0, len(items), size):
-        yield items[start : start + size]
-
+# ------------------------------------------------------------------------- semantic similarity
 
 def backfill_embeddings(db: Session, current_user: User, limit: int = 250) -> dict:
-    """Embed jurisdiction-visible cases; reruns update vectors for this model version."""
-    query = db.query(CaseMaster).filter(CaseMaster.BriefFacts.isnot(None), CaseMaster.BriefFacts != "")
-    query = apply_jurisdiction_filter(query, db, current_user)
-    cases = query.order_by(CaseMaster.CaseMasterID).limit(limit).all()
-    if not cases:
-        return {"Processed": 0, "Created": 0, "Updated": 0, "ModelName": settings.EMBEDDING_MODEL_NAME, "ModelVersion": settings.EMBEDDING_MODEL_VERSION}
+    """Embed up to `limit` visible cases that have no embedding yet (so repeated calls resume where the last stopped).
+    Stops cleanly at the Gemini quota and reports how many cases are still pending."""
+    from app.services.gemini_client import GeminiError, GeminiQuotaError
 
-    ids = [case.CaseMasterID for case in cases]
-    existing = {
-        record.CaseMasterID: record
-        for record in db.query(CaseEmbedding).filter(
-            CaseEmbedding.CaseMasterID.in_(ids),
-            CaseEmbedding.EmbeddingModel == settings.EMBEDDING_MODEL_NAME,
-            CaseEmbedding.Version == settings.EMBEDDING_MODEL_VERSION,
-        )
-    }
+    embedded = select(CaseEmbedding.CaseMasterID).where(
+        CaseEmbedding.EmbeddingModel == settings.EMBEDDING_MODEL_NAME, CaseEmbedding.Version == settings.EMBEDDING_MODEL_VERSION)
+    query = db.query(CaseMaster).filter(CaseMaster.BriefFacts.isnot(None), CaseMaster.BriefFacts != "", CaseMaster.CaseMasterID.notin_(embedded))
+    query = apply_jurisdiction_filter(query, db, current_user)
+    pending_total = query.count()
+    cases = query.order_by(CaseMaster.CaseMasterID).limit(limit).all()
+
     created = 0
-    updated = 0
-    for batch in _chunks(cases):
-        vectors = _embed_texts([case.BriefFacts for case in batch])
+    note = None
+    for start in range(0, len(cases), 100):
+        batch = cases[start:start + 100]
+        try:
+            vectors = _embed_texts([case.BriefFacts for case in batch])
+        except GeminiQuotaError as exc:
+            note = f"Embedding quota reached; resets in about {exc.retry_after / 3600:.1f} hours."
+            break
+        except GeminiError as exc:
+            note = f"Embedding stopped: {exc}"
+            break
         for case, vector in zip(batch, vectors):
-            record = existing.get(case.CaseMasterID)
-            if record:
-                record.EmbeddingVector = vector
-                updated += 1
-            else:
-                db.add(CaseEmbedding(
-                    CaseMasterID=case.CaseMasterID,
-                    EmbeddingVector=vector,
-                    EmbeddingModel=settings.EMBEDDING_MODEL_NAME,
-                    Version=settings.EMBEDDING_MODEL_VERSION,
-                ))
-                created += 1
-    db.commit()
-    return {"Processed": len(cases), "Created": created, "Updated": updated, "ModelName": settings.EMBEDDING_MODEL_NAME, "ModelVersion": settings.EMBEDDING_MODEL_VERSION}
+            db.add(CaseEmbedding(CaseMasterID=case.CaseMasterID, EmbeddingVector=vector,
+                                 EmbeddingModel=settings.EMBEDDING_MODEL_NAME, Version=settings.EMBEDDING_MODEL_VERSION))
+            created += 1
+        db.commit()
+    return {"Processed": created, "Created": created, "Updated": 0, "Pending": max(pending_total - created, 0), "Note": note,
+            "ModelName": settings.EMBEDDING_MODEL_NAME, "ModelVersion": settings.EMBEDDING_MODEL_VERSION}
 
 
 def _factors(source: CaseMaster, candidate: CaseMaster) -> list[dict]:
@@ -251,6 +222,9 @@ def _factors(source: CaseMaster, candidate: CaseMaster) -> list[dict]:
 
 def find_similar_cases(db: Session, case_id: int, current_user: User, limit: int = 10) -> dict:
     """Retrieve jurisdiction-scoped nearest neighbours from pgvector using cosine distance."""
+    if db.get_bind().dialect.name != "postgresql":
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                            detail="Similar-case search needs PostgreSQL with the pgvector extension.")
     source_query = db.query(CaseMaster).filter(CaseMaster.CaseMasterID == case_id)
     source = apply_jurisdiction_filter(source_query, db, current_user).first()
     if not source:
@@ -275,37 +249,23 @@ def find_similar_cases(db: Session, case_id: int, current_user: User, limit: int
         db.commit()
         db.refresh(source_record)
 
-    try:
-        if hasattr(CaseEmbedding.EmbeddingVector, "cosine_distance"):
-            distance = CaseEmbedding.EmbeddingVector.cosine_distance(source_record.EmbeddingVector).label("distance")
-        elif hasattr(CaseEmbedding.EmbeddingVector, "op"):
-            distance = CaseEmbedding.EmbeddingVector.op('<=>')(source_record.EmbeddingVector).label("distance")
-        else:
-            distance = CaseMaster.AIRiskScore.label("distance")
+    distance = CaseEmbedding.EmbeddingVector.cosine_distance(source_record.EmbeddingVector).label("distance")
+    query = db.query(CaseMaster, distance).join(CaseEmbedding, CaseEmbedding.CaseMasterID == CaseMaster.CaseMasterID).filter(
+        CaseMaster.CaseMasterID != source.CaseMasterID,
+        CaseEmbedding.EmbeddingModel == settings.EMBEDDING_MODEL_NAME,
+        CaseEmbedding.Version == settings.EMBEDDING_MODEL_VERSION,
+    )
+    query = apply_jurisdiction_filter(query, db, current_user, model_class=CaseMaster)
+    rows = query.order_by(distance).limit(limit).all()
 
-        query = db.query(CaseMaster, distance).join(CaseEmbedding, CaseEmbedding.CaseMasterID == CaseMaster.CaseMasterID).filter(
-            CaseMaster.CaseMasterID != source.CaseMasterID,
-            CaseEmbedding.EmbeddingModel == settings.EMBEDDING_MODEL_NAME,
-            CaseEmbedding.Version == settings.EMBEDDING_MODEL_VERSION,
-        )
-        query = apply_jurisdiction_filter(query, db, current_user, model_class=CaseMaster)
-        if source.CrimeMajorHeadID:
-            query = query.filter(CaseMaster.CrimeMajorHeadID == source.CrimeMajorHeadID)
-        rows = query.order_by(distance).limit(limit).all()
-    except Exception:
-        db.rollback()
-        query = db.query(CaseMaster, CaseMaster.AIRiskScore.label("distance")).filter(
-            CaseMaster.CaseMasterID != source.CaseMasterID
-        )
-        query = apply_jurisdiction_filter(query, db, current_user, model_class=CaseMaster)
-        if source.CrimeMajorHeadID:
-            query = query.filter(CaseMaster.CrimeMajorHeadID == source.CrimeMajorHeadID)
-        rows = query.order_by(CaseMaster.AIRiskScore.desc()).limit(limit).all()
-
+    embedded_cases = db.query(func.count(CaseEmbedding.CaseMasterID)).filter(
+        CaseEmbedding.EmbeddingModel == settings.EMBEDDING_MODEL_NAME, CaseEmbedding.Version == settings.EMBEDDING_MODEL_VERSION).scalar()
     response_payload = {
         "SourceCaseMasterID": source.CaseMasterID,
         "ModelName": settings.EMBEDDING_MODEL_NAME,
         "ModelVersion": settings.EMBEDDING_MODEL_VERSION,
+        "SearchedCases": int(embedded_cases or 0),
+        "TotalCases": int(db.query(func.count(CaseMaster.CaseMasterID)).scalar() or 0),
         "Matches": [
             {
                 "CaseMasterID": candidate.CaseMasterID,
@@ -317,5 +277,6 @@ def find_similar_cases(db: Session, case_id: int, current_user: User, limit: int
             for candidate, candidate_distance in rows
         ],
     }
-    ai_audit_service.log_ai_run(db, current_user.UserID, "similar_case", "LaBSE", settings.EMBEDDING_MODEL_VERSION, str(case_id), {"match_count": len(response_payload["Matches"])})
+    ai_audit_service.log_ai_run(db, current_user.UserID, "similar_case", settings.EMBEDDING_MODEL_NAME,
+                                settings.EMBEDDING_MODEL_VERSION, str(case_id), {"match_count": len(response_payload["Matches"])})
     return response_payload

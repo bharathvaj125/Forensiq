@@ -9,6 +9,9 @@ export const caseService = {
     stationId?: number;
     statusId?: number;
     sortBy?: string;
+    riskLevel?: string;
+    statusGroup?: string;
+    crimeCategory?: string;
   } = {}) {
     const response = await apiClient.get("/cases", { params });
     return response.data;
@@ -55,6 +58,11 @@ export const caseService = {
 
   async getCaseVehicles(caseId: number) {
     const response = await apiClient.get(`/cases/${caseId}/vehicles`);
+    return response.data;
+  },
+
+  async getCaseTimeline(caseId: number) {
+    const response = await apiClient.get(`/cases/${caseId}/timeline`);
     return response.data;
   },
 

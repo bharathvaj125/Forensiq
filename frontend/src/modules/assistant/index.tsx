@@ -1,21 +1,41 @@
 import { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { assistantService } from "../../services/assistantService";
+import { reportService } from "../../services/reportService";
 import { X, Send, ShieldCheck, FileText, Sparkles, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+
+// Example questions only; every answer is computed from the database by the assistant's tools.
+const QUICK_PROMPTS = [
+  { label: "📊 Open cases by district", query: "How many open FIRs are there in each district? Show the top five." },
+  { label: "👤 Repeat offenders", query: "Which repeat offenders appear in the most FIRs, and where?" },
+  { label: "🚨 Overdue investigations", query: "Which police stations have the most investigations past the statutory window?" },
+  { label: "📈 Rising crime types", query: "Which crime types have increased most over the last three months?" },
+];
 
 export default function AssistantPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [query, setQuery] = useState("");
-  const [messages, setMessages] = useState<any[]>([
-    {
-      sender: "bot",
-      text: "### 👮 Forensiq AI Intelligence Command\nGreetings Officer! I am your Forensiq Crime Intelligence Assistant, powered by Gemini.\n\nI have indexed all **5,000 FIR Records**, suspect graphs, evidence, and GIS hotspots in your jurisdiction. How can I assist your investigation today?",
-      modelVersion: "gemini-3.6-flash",
-    },
-  ]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: status } = useQuery({
+    queryKey: ["assistantStatus"],
+    queryFn: () => assistantService.getStatus(),
+    enabled: isOpen,
+    refetchInterval: isOpen ? 60000 : false,
+  });
+
+  const downloadDossier = async (downloadUrl: string, messageIndex: number) => {
+    const jobId = Number(downloadUrl.match(/jobs\/(\d+)\//)?.[1]);
+    try {
+      await reportService.downloadReportPdf(jobId);
+    } catch {
+      setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, downloadNote: "The dossier is still being compiled or is not available to you. Try again in a few seconds." } : m)));
+    }
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -38,14 +58,16 @@ export default function AssistantPanel() {
           text: data.answer,
           sources: data.source_case_ids || [],
           downloadUrl: data.download_url || null,
-          modelVersion: data.model_version || "gemini-3.6-flash",
+          modelVersion: data.model_version,
         },
       ]);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      // The backend explains quota / availability problems in `detail`; show that rather than a generic failure.
+      const detail = err?.response?.data?.detail;
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: "Communication timeout. Ensure the KSP AI Engine is online." },
+        { sender: "bot", text: typeof detail === "string" ? detail : "The assistant could not be reached. Please try again in a moment." },
       ]);
     } finally {
       setLoading(false);
@@ -106,13 +128,6 @@ export default function AssistantPanel() {
     });
   };
 
-  const quickPrompts = [
-    { label: "📊 Crime Statistics", query: "Analyze overall dataset crime statistics and top district crime volumes" },
-    { label: "👤 Suspect Linkages", query: "Show repeat offender suspect linkages and multi-FIR gang networks" },
-    { label: "🚨 High-Risk Hotspots", query: "Which police station zones have the highest AI risk scores?" },
-    { label: "📑 Compile PDF Dossier", query: "Compile official KSP PDF dossier for Case 1" },
-  ];
-
   return (
     <div className="fixed bottom-6 right-6 z-50 select-none font-sans flex flex-col items-end">
       {/* FLOATING POLICE BADGE BUTTON */}
@@ -145,14 +160,18 @@ export default function AssistantPanel() {
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-extrabold text-slate-100 tracking-tight font-mono uppercase">
-                    KSP AI Intelligence Assistant
+                    Forensiq Intelligence Assistant
                   </span>
-                  <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] px-1.5 py-0.2 rounded font-mono font-bold">
-                    ONLINE
+                  <span className={`border text-[9px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                    !status ? "bg-slate-500/20 text-slate-400 border-slate-500/30"
+                      : status.available ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                      : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                  }`}>
+                    {!status ? "…" : status.available ? "ONLINE" : "MODEL BUSY"}
                   </span>
                 </div>
                 <p className="text-[10px] text-blue-400 font-mono">
-                  Gemini-Powered Intelligence Engine
+                  {status?.models[0] ?? (status && !status.configured ? "No language model configured" : "Database-grounded assistant")}
                 </p>
               </div>
             </div>
@@ -176,6 +195,26 @@ export default function AssistantPanel() {
 
           {/* MESSAGES BODY */}
           <div className="flex-1 p-4 overflow-y-auto space-y-3.5 flex flex-col bg-gradient-to-b from-[#0b0f19] to-[#0f172a]">
+            <div className="bg-[#151c2e] border border-[#1e293b] text-slate-200 self-start mr-auto rounded-lg rounded-bl-none p-3 text-xs leading-relaxed max-w-[90%]">
+              {status ? (
+                <>
+                  <h3 className="text-xs font-bold text-[#60a5fa] mb-1 font-mono uppercase tracking-wider">Forensiq intelligence assistant</h3>
+                  <p>
+                    Ask about FIRs, accused, networks, hotspots or trends. I answer by querying the <strong className="text-slate-100">{status.cases_in_scope.toLocaleString()} FIRs</strong> in
+                    your jurisdiction (registered up to {status.as_of_date}); similar-case search covers the {status.embedded_cases.toLocaleString()} FIRs that have been embedded so far.
+                  </p>
+                  {!status.available && (
+                    <p className="mt-1.5 text-amber-400">
+                      {status.configured
+                        ? `The language model is rate-limited right now${status.retry_in_seconds ? ` (retry in about ${Math.ceil(status.retry_in_seconds / 60)} min)` : ""}.`
+                        : "No language model is configured on the server, so chat answers are unavailable."}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-slate-400 font-mono">Checking what I can answer from…</p>
+              )}
+            </div>
             {messages.map((m, idx) => (
               <div
                 key={idx}
@@ -193,15 +232,16 @@ export default function AssistantPanel() {
 
                 {/* PDF Download Button */}
                 {m.downloadUrl && (
-                  <a
-                    href={`http://localhost:8000${m.downloadUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded text-xs font-bold font-mono transition-all w-fit shadow-lg shadow-emerald-600/20"
-                  >
-                    <FileText size={14} />
-                    <span>Download Official KSP PDF Dossier</span>
-                  </a>
+                  <>
+                    <button
+                      onClick={() => downloadDossier(m.downloadUrl, idx)}
+                      className="mt-3 inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded text-xs font-bold font-mono transition-all w-fit shadow-lg shadow-emerald-600/20"
+                    >
+                      <FileText size={14} />
+                      <span>Download case dossier (PDF)</span>
+                    </button>
+                    {m.downloadNote && <p className="mt-1.5 text-[10px] text-amber-400">{m.downloadNote}</p>}
+                  </>
                 )}
 
                 {/* Source Citations */}
@@ -222,9 +262,9 @@ export default function AssistantPanel() {
                   </div>
                 )}
 
-                {m.sender === "bot" && (
+                {m.sender === "bot" && m.modelVersion && (
                   <div className="text-[9px] text-slate-500 font-mono mt-1.5 text-right uppercase tracking-wider">
-                    {m.modelVersion || "gemini-3.6-flash"}
+                    {m.modelVersion}
                   </div>
                 )}
               </div>
@@ -233,7 +273,7 @@ export default function AssistantPanel() {
             {loading && (
               <div className="bg-[#151c2e] border border-[#1e293b] text-slate-300 p-3 rounded-lg text-xs self-start mr-auto flex items-center gap-2 font-mono shadow-md">
                 <RefreshCw className="animate-spin text-blue-400" size={14} />
-                <span>Analyzing Crime Records Dataset...</span>
+                <span>Querying the database…</span>
               </div>
             )}
             <div ref={scrollRef} />
@@ -242,7 +282,7 @@ export default function AssistantPanel() {
           {/* QUICK SUGGESTION PROMPTS */}
           <div className="px-3 py-2 bg-[#0f172a] border-t border-[#1e293b] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             <Sparkles className="text-amber-400 flex-shrink-0" size={12} />
-            {quickPrompts.map((p, pIdx) => (
+            {QUICK_PROMPTS.map((p, pIdx) => (
               <button
                 key={pIdx}
                 onClick={() => handleSend(p.query)}

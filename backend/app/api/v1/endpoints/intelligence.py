@@ -80,8 +80,8 @@ def predict_case_risk(
     current_user: User = Depends(verify_permission("cases:read"))
 ):
     """
-    Computes AI-driven risk scores and identifies contributing feature vectors (SHAP) for a case.
-    Enforces row-level geographic scoping boundary constraints.
+    Scores a case with the risk model and explains it by decision-path attribution (per-feature
+    contribution to the estimated chance of a High/Severe rating). Enforces jurisdiction scoping.
     """
     case = case_crud.get_case_by_id(db, case_id, current_user)
     if not case:
@@ -89,38 +89,44 @@ def predict_case_risk(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Case not found or access denied."
         )
-        
-    result = intelligence_service.predict_case_risk(db, case, current_user)
 
-    top_factors = []
-    for factor in result.get("top_factors", result.get("top_features", [])):
-        feat_name = str(factor.get("feature_name") or factor.get("feature") or "Crime Feature")
-        score = float(factor.get("impact_score") or factor.get("weight") or factor.get("contribution") or 0.25)
-        desc = str(factor.get("description") or f"High impact factor from feature {feat_name}")
-        top_factors.append(RiskFactor(FeatureName=feat_name, ImpactScore=score, Description=desc))
+    result = intelligence_service.predict_case_risk(db, case, current_user)
 
     return PredictRiskResponse(
         CaseMasterID=case_id,
-        AIRiskScore=float(result.get("score", case.AIRiskScore or 0.75)),
-        RiskLevel=str(result.get("risk_level", "High")),
-        TopRiskFactors=top_factors,
+        AIRiskScore=result["score"],
+        RiskLevel=result["risk_level"],
+        TopRiskFactors=[
+            RiskFactor(FeatureName=f["feature_name"], ImpactScore=f["impact_score"], Description=f["description"])
+            for f in result["top_factors"]
+        ],
+        ModelVersion=result["model_version"],
+        Summary=result["summary"],
+        Confidence=result["confidence"],
+        ConfidenceMeaning=result["confidence_meaning"],
+        ClassProbabilities=result["class_probabilities"],
     )
 
 
-@router.post("/risk-scores/backfill", summary="Backfill AI Risk Scores Across Database")
+@router.post("/risk-scores/backfill", summary="Re-score every case with the current risk model")
 def backfill_case_risk_scores(
-    limit: int = 500,
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:update"))
 ):
-    """Refreshes and persists model-generated RandomForest risk scores for cases with default seed values."""
-    from app.models.case_master import CaseMaster
-    cases = db.query(CaseMaster).filter(CaseMaster.AIRiskScore == 0.55).limit(limit).all()
-    updated = 0
-    for case in cases:
-        res = intelligence_service.predict_case_risk(db, case, current_user)
-        if res.get("score") is not None:
-            case.AIRiskScore = res["score"]
-            updated += 1
-    db.commit()
-    return {"status": "success", "updated_count": updated, "message": f"Successfully backfilled {updated} case risk scores."}
+    """Re-scores all cases with the current model version and persists score and level."""
+    from app.ml.models.risk_scoring import scorer
+    from app.services import risk_service
+    try:
+        updated = risk_service.score_cases(db)
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Model unavailable: {exc}")
+    return {"status": "success", "updated_count": updated, "model_version": scorer.model_version()}
+
+
+@router.get("/risk-model", summary="Risk model card: training data, cross-validated metrics, feature importance")
+def get_risk_model_card(current_user: User = Depends(verify_permission("cases:read"))):
+    from app.ml.models.risk_scoring import scorer
+    try:
+        return scorer.model_card()
+    except (FileNotFoundError, RuntimeError) as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Model unavailable: {exc}")

@@ -23,44 +23,7 @@ export default function Sidebar() {
 
   const roleName = user?.role?.RoleName || "Guest";
 
-  const getOfficialRankTitle = (username?: string, roleName?: string, userRank?: string) => {
-    if (userRank) return userRank;
-    if (!username) return roleName || "Officer";
-    const u = username.toLowerCase();
-    
-    if (u === "ksp_admin") {
-      return "System Administrator";
-    }
-    if (u.includes("bharathvaj")) {
-      return "DGP — Director General of Police";
-    }
-    if (u.includes("ramesh") || u.includes("verma")) {
-      return "SP — Superintendent of Police";
-    }
-    if (u.includes("dgp")) return "DGP — Director General of Police";
-    if (u.includes("adgp")) return "ADGP — Addl. Director General";
-    if (u.includes("igp")) return "IGP — Inspector General";
-    if (u.includes("digp")) return "DIGP — Deputy Inspector General";
-    if (u.includes("sp")) return "SP — Superintendent of Police";
-    if (u.includes("dysp")) return "DySP — Deputy Superintendent";
-    if (u.includes("pi") || u.includes("inspector")) return "PI — Police Inspector";
-    if (u.includes("psi") || u.includes("si")) return "PSI — Sub Inspector of Police";
-    if (u.includes("asi")) return "ASI — Assistant Sub Inspector";
-    if (u.includes("hc")) return "HC — Head Constable";
-    if (u.includes("suda") || u.includes("constable")) return "PC — Police Constable";
-    if (u.includes("cbi")) return "SP — Central Bureau of Investigation";
-    if (u.includes("fsl")) return "FSL — Forensic Science Specialist";
-    if (u.includes("ed")) return "JD — Enforcement Directorate";
-    
-    if (roleName === "Admin") return "System Administrator";
-    if (roleName === "SCRB_Officer") return "SP — Superintendent of Police";
-    if (roleName === "SHO") return "PI — Station House Officer";
-    if (roleName === "Constable") return "PC — Police Constable";
-    
-    return roleName || "KSP Police Officer";
-  };
-
-  const officialRankTitle = getOfficialRankTitle(user?.Username, roleName, user?.Rank);
+  const officialRankTitle = user?.Rank || roleName;
 
   const menuItems = [
     { name: t("nav_dashboard"), path: "/dashboard", icon: LayoutDashboard, roles: ["Admin", "SCRB_Officer", "SHO", "Constable", "ExternalAgencyOfficer"] },

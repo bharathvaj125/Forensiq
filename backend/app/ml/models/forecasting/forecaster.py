@@ -1,91 +1,49 @@
-import pandas as pd
-import numpy as np
-from datetime import timedelta
-from sklearn.linear_model import Ridge
-from functools import lru_cache
+"""Trend forecast of daily registrations by Ridge regression, with a significance test on the slope."""
 
-@lru_cache(maxsize=1)
-def _get_forecasting_model():
-    """Load serialized Ridge forecasting model. Fail-fast if absent."""
-    import joblib
-    from pathlib import Path
-    model_path = Path(__file__).parents[2] / "saved_models" / "forecasting_model.joblib"
-    if not model_path.exists():
-        raise FileNotFoundError(
-            f"Required ML artifact 'forecasting_model.joblib' is missing from {model_path.parent}. "
-            f"Run 'python train_and_save_all_models.py' before deploying to Catalyst AppSail."
-        )
-    return joblib.load(model_path)
+from datetime import timedelta
+
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import Ridge
+
+MODEL_VERSION = "ridge-trend-v3"
+SIGNIFICANCE_T = 2.0  # |t| above this is a significant slope (about the 95% level for the sample sizes involved)
+MIN_DAYS = 3
 
 
 def forecast_crime_trend(registration_dates: list[str], horizon_days: int) -> dict:
-    """
-    Preprocess dates, handle missing dates, fit Ridge regression, and
-    classify the trend using a statistical significance t-test.
-    """
-    if not registration_dates:
-        return {"model_version": "phase4-trend-regression-v2", "trend": "stable", "points": []}
+    """Fit a linear trend to daily counts and extend it `horizon_days` days.
 
+    Returns an empty forecast (trend 'insufficient data') when there are too few days to fit."""
     dates = pd.to_datetime(pd.Series(registration_dates), errors="coerce").dropna().dt.normalize()
-    if len(dates) < 2:
-        today_dt = pd.Timestamp.now().normalize()
-        points = [
-            {"date": (today_dt + timedelta(days=i+1)).date().isoformat(), "predicted_count": 1.0}
-            for i in range(min(horizon_days, 14))
-        ]
-        return {"model_version": "phase4-trend-regression-v2", "trend": "stable", "points": points}
+    if dates.empty:
+        return {"model_version": MODEL_VERSION, "trend": "insufficient data", "points": []}
 
     daily = dates.value_counts().sort_index()
-    full_index = pd.date_range(daily.index.min(), daily.index.max(), freq="D")
-    series = daily.reindex(full_index, fill_value=0)
-
+    series = daily.reindex(pd.date_range(daily.index.min(), daily.index.max(), freq="D"), fill_value=0)
     n = len(series)
-    if n < 3:
-        # Too little data to compute residuals, fallback to flat predictions
-        slope = 0.0
-        predicted_vals = [float(series.values[-1])] * horizon_days
-        significant = False
-    else:
-        x = np.arange(n).reshape(-1, 1)
-        y = series.values
+    if n < MIN_DAYS:
+        return {"model_version": MODEL_VERSION, "trend": "insufficient data", "points": []}
 
-        # Use Ridge regression to avoid overfitting
-        model = Ridge(alpha=1.0).fit(x, y)
-        slope = float(model.coef_[0])
+    x = np.arange(n).reshape(-1, 1)
+    y = series.values
+    model = Ridge(alpha=1.0).fit(x, y)
+    slope = float(model.coef_[0])
+    predicted = model.predict(np.arange(n, n + horizon_days).reshape(-1, 1)).clip(min=0)
 
-        future_x = np.arange(n, n + horizon_days).reshape(-1, 1)
-        predicted_vals = model.predict(future_x).clip(min=0)
+    residual_ss = float(np.sum((y - model.predict(x)) ** 2))
+    spread_x = float(np.sum((x - x.mean()) ** 2))
+    significant = False
+    if n > 2 and residual_ss > 0 and spread_x > 0:
+        standard_error = np.sqrt(residual_ss / (n - 2)) / np.sqrt(spread_x)
+        significant = abs(slope / standard_error) > SIGNIFICANCE_T
 
-        # Compute statistical significance of the slope
-        residuals = y - model.predict(x)
-        rss = np.sum(residuals**2)
-        df = n - 2
-        se_regression = np.sqrt(rss / df) if df > 0 else 0.0
-
-        x_mean = np.mean(x)
-        ss_x = np.sum((x - x_mean)**2)
-
-        if se_regression > 0 and ss_x > 0:
-            se_slope = se_regression / np.sqrt(ss_x)
-            t_stat = slope / se_slope
-            # 95% confidence threshold (critical t-value approx 2.0)
-            significant = abs(t_stat) > 2.0
-        else:
-            significant = False
-
-    if significant:
-        trend = "increasing" if slope > 0.0 else "decreasing"
-    else:
-        trend = "stable"
-
+    trend = ("increasing" if slope > 0 else "decreasing") if significant else "stable"
     return {
-        "model_version": "phase4-trend-regression-v2",
+        "model_version": MODEL_VERSION,
         "trend": trend,
         "points": [
-            {
-                "date": (series.index.max() + timedelta(days=index + 1)).date().isoformat(),
-                "predicted_count": round(float(value), 2)
-            }
-            for index, value in enumerate(predicted_vals)
+            {"date": (series.index.max() + timedelta(days=i + 1)).date().isoformat(), "predicted_count": round(float(value), 2)}
+            for i, value in enumerate(predicted)
         ],
     }

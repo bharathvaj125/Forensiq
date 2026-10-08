@@ -58,7 +58,7 @@ Rule for this plan: no fabricated numbers, names, alerts, confidences or canned 
 **WP8 — Verification & delivery**
 - [x] Smoke-test suite in repo (`backend/tests/smoke_test.py`), all endpoints + ground-truth checks
 - [x] Docs updated (README, this file)
-- [ ] Commit (no co-author trailer), push, and confirm the Render redeploy reports `dialect: postgresql`
+- [x] Committed (no co-author trailer), pushed, Render redeploy reports `dialect: postgresql`, smoke test 51/51 against the live API, Vercel serves the new build (2026-10-08)
 
 ---
 

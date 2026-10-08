@@ -132,6 +132,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Compress JSON responses (the map and graph payloads are large); added before CORS so CORS stays outermost
+from starlette.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # CORSMiddleware registered first immediately after app instantiation
 app.add_middleware(
     CORSMiddleware,

@@ -24,6 +24,7 @@ from app.models.police_station import PoliceStation
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.victim import Victim
+from app.services import cache
 from app.services import ai_audit_service
 from app.services.case_filters import apply_case_filters
 
@@ -47,6 +48,7 @@ def _person_label(pid: int, names: dict[int, str]) -> str:
     return names.get(pid, f"Person {pid}")
 
 
+@cache.per_user(90)
 def get_gang_communities(db: Session, current_user: User, min_size: int = MIN_NETWORK_SIZE) -> dict:
     """Networks of linked people anchored on repeat offenders, within the caller's jurisdiction."""
     accused_query = db.query(Accused).join(CaseMaster, Accused.CaseMasterID == CaseMaster.CaseMasterID)
@@ -127,6 +129,7 @@ def _classify_evidence(evidence_type: str) -> tuple[str, str]:
     return "Evidence", "Case evidence"
 
 
+@cache.per_user(90)
 def get_dynamic_network_graph(
     db: Session,
     current_user: User,
@@ -178,7 +181,7 @@ def get_dynamic_network_graph(
     for case in cases:
         station_name = stations.get(case.PoliceStationID, f"Station #{case.PoliceStationID}")
         registered = case.CrimeRegisteredDate.strftime("%Y-%m-%d") if case.CrimeRegisteredDate else "unknown date"
-        level = f"AI risk {case.AIRiskScore:.2f} ({case.AIRiskLevel})" if case.AIRiskScore is not None else "not yet risk-scored"
+        level = f"AI risk {case.AIRiskLevel}, index {case.AIRiskScore * 100:.0f}/100" if case.AIRiskScore is not None else "not yet risk-scored"
         nodes[f"case-{case.CaseMasterID}"] = {
             "id": f"case-{case.CaseMasterID}", "label": f"FIR #{case.CaseNo or case.CaseMasterID}", "node_type": "FIR",
             "sub_type": "Case File", "centrality": 1, "case_count": 1, "risk_score": case.AIRiskScore,

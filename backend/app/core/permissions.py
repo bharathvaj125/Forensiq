@@ -4,6 +4,9 @@ from app.core.dependencies import get_db, get_current_active_user
 from app.models.user import User
 from app.models.role_permission import RolePermission
 from app.models.permission import Permission
+from app.services import cache
+
+PERMISSION_TTL = 300
 
 def has_permission(db: Session, user: User, permission_code: str) -> bool:
     """
@@ -21,15 +24,15 @@ def has_permission(db: Session, user: User, permission_code: str) -> bool:
     if user.role and user.role.RoleName == "ExternalAgencyOfficer" and (permission_code.endswith(":read") or "read" in permission_code):
         return True
 
-    # Query if the user's role is granted the requested permission
-    exists = db.query(RolePermission).join(
-        Permission, RolePermission.PermissionID == Permission.PermissionID
-    ).filter(
-        RolePermission.RoleID == user.RoleID,
-        Permission.PermissionCode == permission_code
-    ).first()
-    
-    return exists is not None
+    return permission_code in _role_codes(db, user.RoleID)
+
+
+def _role_codes(db: Session, role_id: int) -> frozenset:
+    """The permission codes a role grants, cached (roles change rarely and admin changes clear the cache)."""
+    def load():
+        return frozenset(code for (code,) in db.query(Permission.PermissionCode).join(
+            RolePermission, RolePermission.PermissionID == Permission.PermissionID).filter(RolePermission.RoleID == role_id).all())
+    return cache.get_or_compute(("role-codes", role_id), PERMISSION_TTL, load)
 
 def verify_permission(permission_code: str):
     """
@@ -53,10 +56,10 @@ def permissions_for_user(db: Session, user: User) -> list[str]:
     """Every permission code the user's role grants (mirrors has_permission's rules)."""
     if not user.RoleID:
         return []
+    every_code = cache.get_or_compute(("all-codes",), PERMISSION_TTL, lambda: frozenset(code for (code,) in db.query(Permission.PermissionCode).all()))
     if user.RoleID == 1 or (user.role and user.role.RoleName == "Admin"):
-        return sorted(code for (code,) in db.query(Permission.PermissionCode).all())
-    codes = {code for (code,) in db.query(Permission.PermissionCode).join(
-        RolePermission, RolePermission.PermissionID == Permission.PermissionID).filter(RolePermission.RoleID == user.RoleID).all()}
+        return sorted(every_code)
+    codes = set(_role_codes(db, user.RoleID))
     if user.role and user.role.RoleName == "ExternalAgencyOfficer":
-        codes |= {code for (code,) in db.query(Permission.PermissionCode).all() if "read" in code}
+        codes |= {code for code in every_code if "read" in code}
     return sorted(codes)

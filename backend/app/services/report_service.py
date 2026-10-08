@@ -131,8 +131,8 @@ def export_case_excel(db: Session, case_id: int, current_user: User) -> bytes:
     writer.writerow(["Case Number", case.CaseNo or "N/A"])
     writer.writerow(["Case Master ID", case.CaseMasterID])
     writer.writerow(["Registration Date", str(case.CrimeRegisteredDate)[:10] if case.CrimeRegisteredDate else "N/A"])
-    writer.writerow(["Priority", case.InvestigationPriority or "Medium"])
-    writer.writerow(["AI Risk Score", f"{(case.AIRiskScore or 0.0)*100:.1f}%"])
+    writer.writerow(["Priority", case.InvestigationPriority or "Not set"])
+    writer.writerow(["AI Risk", f"{case.AIRiskLevel}, index {case.AIRiskScore * 100:.0f}/100" if case.AIRiskScore is not None else "Not scored"])
     writer.writerow(["Brief Facts", case.BriefFacts or "N/A"])
     writer.writerow([])
     writer.writerow(["Accused Name", "Age", "Occupation", "Status"])
@@ -153,8 +153,8 @@ OFFICIAL EXECUTIVE CASE DOSSIER & CRIME INTELLIGENCE BRIEF
 Case Number: {case.CaseNo or 'N/A'}
 Case Master ID: #{case.CaseMasterID}
 Registration Date: {str(case.CrimeRegisteredDate)[:10] if case.CrimeRegisteredDate else 'N/A'}
-Priority: {case.InvestigationPriority or 'Medium'}
-AI Risk Score: {(case.AIRiskScore or 0.0)*100:.1f}%
+Priority: {case.InvestigationPriority or 'Not set'}
+AI Risk: {(f"{case.AIRiskLevel}, index {case.AIRiskScore * 100:.0f}/100") if case.AIRiskScore is not None else "Not scored"}
 
 BRIEF FACTS:
 {case.BriefFacts or 'No brief facts recorded.'}

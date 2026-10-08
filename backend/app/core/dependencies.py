@@ -1,7 +1,8 @@
 from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from starlette.concurrency import run_in_threadpool
 from app.db.session import SessionLocal
 from app.core import security
 from app.crud import user_crud
@@ -50,24 +51,23 @@ async def get_current_user(
     if not user_id_str:
         raise credentials_exception
 
-    user = None
-    if user_id_str.isdigit():
-        try:
-            user = user_crud.get_user_by_id(db, int(user_id_str))
-        except Exception:
+    # One query that brings the role with the user, run in a worker thread: a database round trip on the event loop
+    # would freeze every other request while it waits.
+    def lookup() -> Optional[User]:
+        found = None
+        if user_id_str.isdigit():
             try:
-                db.rollback()
+                found = db.query(User).options(joinedload(User.role)).filter(User.UserID == int(user_id_str)).first()
             except Exception:
-                pass
+                db.rollback()
+        if not found:
+            try:
+                found = user_crud.get_user_by_username(db, user_id_str)
+            except Exception:
+                db.rollback()
+        return found
 
-    if not user:
-        try:
-            user = user_crud.get_user_by_username(db, user_id_str)
-        except Exception:
-            try:
-                db.rollback()
-            except Exception:
-                pass
+    user = await run_in_threadpool(lookup)
 
     if not user:
         raise credentials_exception

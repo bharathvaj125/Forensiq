@@ -9,7 +9,9 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.services import ai_audit_service, analytics, reference_data
+from app.services import ai_audit_service, analytics, cache, reference_data
+
+READ_TTL = 90
 
 
 def _scoped_frame(db: Session, current_user: User, **filters) -> pd.DataFrame:
@@ -22,6 +24,7 @@ def _geocoded(frame: pd.DataFrame) -> pd.DataFrame:
     return frame[frame["lat"].notna() & (frame["lat"] != 0) & (frame["lon"] != 0)]
 
 
+@cache.per_user(READ_TTL)
 def get_predicted_hotspots(db: Session, current_user: User, district_id: Optional[int] = None,
                            station_id: Optional[int] = None, crime_category: Optional[str] = None) -> dict:
     frame = _scoped_frame(db, current_user, district_id=district_id, station_id=station_id, crime_category=crime_category)
@@ -52,6 +55,7 @@ def get_predicted_hotspots(db: Session, current_user: User, district_id: Optiona
     return result
 
 
+@cache.per_user(READ_TTL)
 def get_map_layers(db: Session, current_user: User) -> dict:
     """Everything the map screens used to hardcode: where districts and stations are (the median coordinate of the
     FIRs they registered, since the dataset holds no station coordinates), and which crime types exist."""

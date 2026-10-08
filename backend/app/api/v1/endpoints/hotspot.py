@@ -59,7 +59,7 @@ def get_hotspots(
             latitude=case.latitude,
             longitude=case.longitude,
             weight=float(case.AIRiskScore) if case.AIRiskScore is not None else None,
-            BriefFacts=case.BriefFacts,
+            BriefFacts=(case.BriefFacts or "")[:220],  # the popup shows a snippet; the full text is in the case file
             CaseNo=case.CaseNo,
             CaseMasterID=case.CaseMasterID,
             DistrictID=getattr(case, "DistrictID", None),

@@ -13,7 +13,9 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.services import analytics, reference_data
+from app.services import analytics, cache, reference_data
+
+READ_TTL = 90  # seconds; any case write clears the cache
 
 OFFICERS_PER_PATROL_UNIT = 2  # staffing assumption for the patrol plan (stated in the plan's reasoning)
 DASHBOARD_ROWS = 8
@@ -54,6 +56,7 @@ def _trend_text(recent: int, previous: int) -> str:
 
 # --------------------------------------------------------------------------------------- dashboard
 
+@cache.per_user(READ_TTL)
 def get_predictive_dashboard(
     db: Session,
     current_user: User,
@@ -207,6 +210,7 @@ def _peak_text(window: dict | None) -> str:
     return analytics.window_label(window) or "no incident times recorded"
 
 
+@cache.per_user(READ_TTL)
 def get_hotspot_rankings(db: Session, current_user: User, district_id: Optional[int] = None,
                          station_id: Optional[int] = None, crime_category: Optional[str] = None) -> dict:
     frame, _, _ = _scoped_frame(db, current_user, district_id=district_id, station_id=station_id, crime_category=crime_category)
@@ -248,6 +252,7 @@ def _route_order(hotspots: list[dict]) -> list[dict]:
     return route
 
 
+@cache.per_user(READ_TTL)
 def get_patrol_strategy(db: Session, current_user: User, district_id: Optional[int] = None, station_id: Optional[int] = None) -> dict:
     frame, as_of, _ = _scoped_frame(db, current_user, district_id=district_id, station_id=station_id)
     scope = "Statewide"
@@ -337,6 +342,7 @@ def _collect_alerts(db: Session, frame: pd.DataFrame, as_of) -> list[dict]:
     return alerts
 
 
+@cache.per_user(READ_TTL)
 def get_early_warnings(db: Session, current_user: User, district_id: Optional[int] = None) -> dict:
     frame, as_of, _ = _scoped_frame(db, current_user, district_id=district_id)
     alerts = _collect_alerts(db, frame, as_of)

@@ -73,6 +73,9 @@ Rule for this plan: no fabricated numbers, names, alerts, confidences or canned 
 - [x] Admin: the "appoint officer" form discarded the officer's name and badge, created a random badge number per process (`hash()` is salted), and never applied the chosen station; fake database-size figures replaced by `/admin/system-health`.
 - [x] Stored text was HTML-entity-escaped (`Ram&#x27;s`); now stored as typed and escaped on output.
 - [x] Performance: shared case-frame and hotspot caching (cleared on any case change), faster KDE evaluation; dashboard summary 6.9 s -> ~1.1 s, predictive dashboard 4.7 s -> ~0.9 s on warm calls.
+- [x] Risk score was confusing (label "Medium" next to a number near 0.00, because the number was the chance of High/Severe). The stored score is now a 0-100 risk index that agrees with the level (Low ~12, Medium ~32, High ~54, Severe ~87 on average); the chance of High or Severe is shown separately. Model v5-index (same forest). Tested whether more registration-time features or other algorithms improve accuracy: they do not (51-53%).
+- [x] Speed: the login check ran database queries on the server's event loop (freezing other requests) and re-read user, role and permissions on every request; now one query in a worker thread, with cached permissions, scope, `/auth/me` and the heavy read endpoints (dashboard, predictive, hotspots, network, court, reference), idle-only connection pings, gzip, smaller map payload, and task polling every 30 s instead of 5 s.
+- [x] Collaboration: requests and grants silently fell back to case 1, agency 1 and officer 1; they now require a real case, external officer and requesting officer. Report PDFs no longer print a made-up 55% risk, "Medium" priority or a canned patrol directive.
 - [x] Pinned `scikit-learn` to the version the saved models were trained with.
 - [x] Dead-host fallback `catalystappsail.in` in the frontend API client replaced with a same-origin default.
 

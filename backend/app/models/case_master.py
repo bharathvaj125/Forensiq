@@ -27,7 +27,7 @@ class CaseMaster(Base):
 
     # --- Metadata Extensions ---
     InvestigationPriority = Column(String, nullable=True)
-    AIRiskScore = Column(Float, nullable=True)  # P(High or Severe) from the risk model
+    AIRiskScore = Column(Float, nullable=True)  # risk index 0-1 from the risk model (expected severity)
     AIRiskLevel = Column(String, nullable=True)  # Low / Medium / High / Severe
     AIRiskModelVersion = Column(String, nullable=True)
     CaseSensitivity = Column(String, default="Standard")

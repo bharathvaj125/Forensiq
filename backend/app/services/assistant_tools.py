@@ -303,7 +303,7 @@ def get_case(ctx: ToolContext, case_ref: str, **_) -> dict:
         "crime_subtype": reference_data.crime_subhead_names(db).get(case.CrimeMinorHeadID),
         "status": reference_data.status_names(db).get(case.CaseStatusID), "heinous": case.GravityOffenceID == 1,
         "investigating_officer": officer.Name if officer else None,
-        "risk": {"score": case.AIRiskScore, "level": case.AIRiskLevel, "meaning": "estimated probability of a High/Severe rating", "top_factors": factors},
+        "risk": {"score": case.AIRiskScore, "level": case.AIRiskLevel, "meaning": "risk index 0-1 (expected severity); the level is the most likely class", "top_factors": factors},
         "facts": case.BriefFacts,
         "accused": [{"name": a.AccusedName, "age": a.AgeYear, "criminal_profile": a.CriminalProfileID, "repeat_offender": bool(a.IsRepeatOffender), "gang_id": a.GangID} for a in accused],
         "victims": [{"name": v.VictimName, "age": v.AgeYear, "injury": v.InjurySeverity} for v in victims][:5],

@@ -45,6 +45,10 @@ def _vocabulary(db: Session) -> dict[str, list[str]]:
 
 @router.get("/options", summary="Districts, stations, crime types, case statuses, categories and recorded vocabularies")
 def get_options(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    return cache.get_or_compute(("reference", "options"), VOCABULARY_TTL, lambda: _options(db))
+
+
+def _options(db: Session) -> dict:
     groups = reference_data.status_groups(db)
     status_group = {i: group for group in ("closed", "open") for i in groups[group]}
 

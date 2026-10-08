@@ -6,6 +6,7 @@ calls clear() so users never see stale counts after registering or updating an F
 
 from __future__ import annotations
 
+import functools
 import threading
 import time
 from typing import Any, Callable
@@ -28,6 +29,31 @@ def get_or_compute(key: Any, ttl_seconds: float, factory: Callable[[], Any]) -> 
                 _store.pop(stale, None)
         _store[key] = (now + ttl_seconds, value)
     return value
+
+
+def get(key: Any) -> Any:
+    with _lock:
+        hit = _store.get(key)
+        return hit[1] if hit and hit[0] > time.time() else None
+
+
+def put(key: Any, value: Any, ttl_seconds: float) -> None:
+    with _lock:
+        if len(_store) >= MAX_ENTRIES:
+            _store.pop(next(iter(_store)), None)
+        _store[key] = (time.time() + ttl_seconds, value)
+
+
+def per_user(ttl_seconds: float):
+    """Cache a service function f(db, current_user, *args, **kwargs) per user and arguments. The result is shared by every
+    request with the same user and arguments until it expires or cache.clear() is called by a write."""
+    def decorate(function):
+        @functools.wraps(function)
+        def inner(db, current_user, *args, **kwargs):
+            key = ("per-user", function.__module__, function.__qualname__, current_user.UserID, args, tuple(sorted(kwargs.items())))
+            return get_or_compute(key, ttl_seconds, lambda: function(db, current_user, *args, **kwargs))
+        return inner
+    return decorate
 
 
 def clear() -> None:

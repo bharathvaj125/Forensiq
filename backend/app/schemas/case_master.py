@@ -22,7 +22,7 @@ class CaseMasterBase(SanitizedBaseModel):
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Longitude coordinate")
     BriefFacts: str = Field(..., min_length=10, description="Descriptive brief facts of the case")
     InvestigationPriority: Optional[Literal["Low", "Medium", "High"]] = Field(None, description="Investigation priority level (AI-suggested, officer-adjustable)")
-    AIRiskScore: Optional[float] = Field(None, ge=0.0, le=1.0, description="Model-estimated probability that the case is rated High or Severe")
+    AIRiskScore: Optional[float] = Field(None, ge=0.0, le=1.0, description="Risk index 0-1 (expected severity from the model's class probabilities: Low near 0, Medium near 0.33, High near 0.67, Severe near 1)")
     CaseSensitivity: Optional[Literal["Standard", "Sensitive", "High Profile"]] = Field("Standard", description="Sensitivity classification")
     DistrictID: Optional[int] = None
     DistrictName: Optional[str] = None

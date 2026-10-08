@@ -202,7 +202,7 @@ export default function Dashboard({ activeTab = "executive" }: DashboardProps) {
               <DataTable
                 columns={caseColumns.map((c) => c.accessorKey === "CaseNo" ? { ...c, accessorKey: "case_no", render: (r: any) => <span className="text-blue-400 font-bold">{r.case_no}</span> } : c)
                   .filter((c) => ["case_no", "AIRiskScore", "BriefFacts"].includes(c.accessorKey))
-                  .map((c) => c.accessorKey === "AIRiskScore" ? { ...c, render: (r: any) => (r.risk_score == null ? "—" : `${r.risk_score.toFixed(2)} ${r.risk_level || ""}`) }
+                  .map((c) => c.accessorKey === "AIRiskScore" ? { ...c, render: (r: any) => (r.risk_score == null ? "—" : `${r.risk_level || ""} · ${Math.round(r.risk_score * 100)}/100`) }
                     : c.accessorKey === "BriefFacts" ? { ...c, render: (r: any) => <p className="truncate max-w-xs">{translateData(r.facts)}</p> } : c)}
                 data={mine?.assigned_case_list || []}
                 loading={!mine}

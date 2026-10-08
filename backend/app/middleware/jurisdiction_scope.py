@@ -4,7 +4,12 @@ from app.models.user import User
 from app.models.case_master import CaseMaster
 from app.models.police_station import PoliceStation
 from app.models.user_jurisdiction import UserJurisdiction
+from types import SimpleNamespace
+
 from app.models.officer import Officer
+from app.services import cache
+
+SCOPE_TTL = 60
 
 # Roles whose holders see every case (senior investigative / oversight roles).
 STATEWIDE_ROLES = ("Admin", "SCRB_Officer", "SHO")
@@ -26,12 +31,16 @@ def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class
         from app.models.external_agency_officer import ExternalAgencyOfficer
         from app.models.collaboration_access import CollaborationAccess
 
-        officer = db.query(ExternalAgencyOfficer).filter(ExternalAgencyOfficer.Username == user.Username).first()
+        def load_access():
+            found = db.query(ExternalAgencyOfficer).filter(ExternalAgencyOfficer.Username == user.Username).first()
+            if not found:
+                return None
+            return [SimpleNamespace(AccessScopeLevel=a.AccessScopeLevel, DistrictID=a.DistrictID, PoliceStationID=a.PoliceStationID,
+                                    CaseMasterID=a.CaseMasterID) for a in db.query(CollaborationAccess).filter(
+                CollaborationAccess.AgencyOfficerID == found.AgencyOfficerID, CollaborationAccess.Status == True).all()]
+        access_records = cache.get_or_compute(("external-access", user.UserID), SCOPE_TTL, load_access)
+        officer = access_records is not None
         if officer:
-            access_records = db.query(CollaborationAccess).filter(
-                CollaborationAccess.AgencyOfficerID == officer.AgencyOfficerID,
-                CollaborationAccess.Status == True
-            ).all()
 
             if access_records:
                 filters = []
@@ -53,27 +62,26 @@ def apply_jurisdiction_filter(query: Query, db: Session, user: User, model_class
         return query.filter(False)
 
     # Load explicit override scopes for the user
-    jurisdictions = db.query(UserJurisdiction).filter(UserJurisdiction.UserID == user.UserID).all()
-    
-    ps_ids = []
-    district_ids = []
-    
-    for j in jurisdictions:
-        if j.UnitID:
-            ps_ids.append(j.UnitID)
-        elif j.DistrictID:
-            district_ids.append(j.DistrictID)
-            
-    # Fallback to the officer profile details if no specific scopes are overridden
-    if not ps_ids and not district_ids:
-        if user.OfficerID:
+    def load_scope():
+        stations, districts = [], []
+        for j in db.query(UserJurisdiction).filter(UserJurisdiction.UserID == user.UserID).all():
+            if j.UnitID:
+                stations.append(j.UnitID)
+            elif j.DistrictID:
+                districts.append(j.DistrictID)
+        # Fallback to the officer profile details if no specific scopes are overridden
+        if not stations and not districts and user.OfficerID:
             officer = db.query(Officer).filter(Officer.OfficerID == user.OfficerID).first()
             if officer:
                 if officer.PoliceStationID:
-                    ps_ids.append(officer.PoliceStationID)
+                    stations.append(officer.PoliceStationID)
                 elif officer.DistrictID:
-                    district_ids.append(officer.DistrictID)
-                
+                    districts.append(officer.DistrictID)
+        return stations, districts
+
+    ps_ids, district_ids = cache.get_or_compute(("scope", user.UserID), SCOPE_TTL, load_scope)
+    ps_ids, district_ids = list(ps_ids), list(district_ids)
+
     # If no scope can be resolved, force empty results
     if not ps_ids and not district_ids:
         return query.filter(False)

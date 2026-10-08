@@ -114,7 +114,7 @@ export default function Investigation() {
   const { data: myTasks } = useQuery({
     queryKey: ["myAssignedTasks"],
     queryFn: () => taskService.getTasksAssignedToMe(),
-    refetchInterval: 5000,
+    refetchInterval: 30000,
   });
 
   const updateStatusMutation = useMutation({
@@ -288,7 +288,7 @@ export default function Investigation() {
       { header: t("Gravity", "ಗಂಭೀರತೆ"), accessorKey: "GravityOffenceID", render: (r: any) => <span className="font-mono text-slate-300">{gravityName(r.GravityOffenceID)}</span> },
       { header: t("AI Risk", "ಎಐ ಅಪಾಯ"), accessorKey: "AIRiskScore", render: (r: any) => (
           r.AIRiskLevel
-            ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border font-bold ${RISK_BADGE[r.AIRiskLevel] || ""}`} title={r.AIRiskScore != null ? `P(High or Severe) = ${r.AIRiskScore.toFixed(2)}` : undefined}>{r.AIRiskLevel}{r.AIRiskScore != null ? ` · ${r.AIRiskScore.toFixed(2)}` : ""}</span>
+            ? <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono border font-bold ${RISK_BADGE[r.AIRiskLevel] || ""}`} title={r.AIRiskScore != null ? `Risk index ${Math.round(r.AIRiskScore * 100)} out of 100 (Low is near 0, Medium near 33, High near 67, Severe near 100)` : undefined}>{r.AIRiskLevel}{r.AIRiskScore != null ? ` · ${Math.round(r.AIRiskScore * 100)}/100` : ""}</span>
             : <span className="text-slate-600" title="Not scored yet">—</span>
         )
       },
@@ -869,8 +869,11 @@ export default function Investigation() {
               ) : (
                 <>
                   <span className="text-xs font-bold uppercase text-slate-100 bg-slate-700/60 border border-slate-600 px-2 py-0.5 rounded mt-3">{aiRiskData.RiskLevel} risk</span>
-                  <span className="text-4xl font-extrabold text-slate-100 font-mono mt-3">{(aiRiskData.AIRiskScore * 100).toFixed(0)}%</span>
-                  <span className="text-[10px] text-slate-400 mt-1 font-mono">estimated chance of a High or Severe rating</span>
+                  <span className="text-4xl font-extrabold text-slate-100 font-mono mt-3">{(aiRiskData.AIRiskScore * 100).toFixed(0)}<span className="text-lg text-slate-500">/100</span></span>
+                  <span className="text-[10px] text-slate-400 mt-1 font-mono">risk index (Low near 0, Medium near 33, High near 67, Severe near 100)</span>
+                  {aiRiskData.HighOrSevereProbability != null && (
+                    <span className="text-[11px] text-amber-300 mt-2 font-mono">Chance of a High or Severe rating: {(aiRiskData.HighOrSevereProbability * 100).toFixed(0)}%</span>
+                  )}
                   {aiRiskData.ClassProbabilities && (
                     <div className="w-full mt-4 space-y-1 text-left">
                       {Object.entries(aiRiskData.ClassProbabilities as Record<string, number>).map(([level, p]) => (
@@ -891,7 +894,7 @@ export default function Investigation() {
             <div className="lg:col-span-2">
               {aiRiskData?.TopRiskFactors?.length > 0 ? (
                 <ExplanationCard
-                  title="What drove this rating (contribution of each feature to the estimated risk)"
+                  title="What drove the chance of a High or Severe rating (each feature's contribution)"
                   factors={aiRiskData.TopRiskFactors.map((f: any) => ({ name: f.FeatureName, score: f.ImpactScore, description: f.Description }))}
                 />
               ) : (

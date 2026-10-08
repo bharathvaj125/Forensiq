@@ -1,6 +1,8 @@
 """Case risk scoring with the dataset-trained RandomForest (see train.py).
 
-score  = estimated probability that a case is rated High or Severe in the dataset's labelling
+index  = the stored risk score, 0-1: the expected severity, sum(class number x probability) / 3 with
+         Low=0, Medium=1, High=2, Severe=3 (so Low is near 0, Medium near 0.33, High near 0.67, Severe near 1)
+high_probability = estimated probability that the case is rated High or Severe in the dataset's labelling
 level  = most probable class: Low / Medium / High / Severe
 """
 
@@ -59,7 +61,8 @@ def score_frame(frame: pd.DataFrame) -> pd.DataFrame:
         proba[:, int(label)] = raw[:, column]
 
     result = pd.DataFrame(proba, index=frame.index, columns=[f"p_{name}" for name in artifact["classes"]])
-    result["score"] = proba[:, list(HIGH_CLASS_INDEXES)].sum(axis=1)
+    result["high_probability"] = proba[:, list(HIGH_CLASS_INDEXES)].sum(axis=1)
+    result["score"] = (proba * np.arange(len(artifact["classes"]))).sum(axis=1) / (len(artifact["classes"]) - 1)
     result["level"] = [artifact["classes"][i] for i in proba.argmax(axis=1)]
     result["confidence"] = proba.max(axis=1)
     return result
@@ -90,6 +93,7 @@ def predict_risk(row: dict, value_labels: dict | None = None) -> dict:
     ]
     return {
         "score": round(float(entry["score"]), 4),
+        "high_probability": round(float(entry["high_probability"]), 4),
         "risk_level": level,
         "priority": PRIORITY_BY_LEVEL[level],
         "model_version": artifact["version"],
@@ -99,7 +103,8 @@ def predict_risk(row: dict, value_labels: dict | None = None) -> dict:
             f"{artifact['trained_on']['rows']} labelled cases it was right {cv['accuracy']:.0%} of the time "
             f"(always guessing the most common class would be right {artifact['cross_validation']['majority_class_accuracy']:.0%})."
         ),
-        "summary": f"Estimated {entry['score']:.0%} chance of a High or Severe rating (most likely class: {level}). Main drivers: {drivers}.",
+        "summary": (f"Risk index {entry['score'] * 100:.0f}/100: most likely class {level}, with an estimated "
+                    f"{entry['high_probability']:.0%} chance of a High or Severe rating. Main drivers: {drivers}."),
         "class_probabilities": {name: round(float(entry[f"p_{name}"]), 4) for name in artifact["classes"]},
         "baseline_probability": explanation["baseline_probability"],
         "top_factors": top_factors,

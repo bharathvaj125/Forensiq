@@ -20,7 +20,7 @@ from app.ml.features import RISK_FEATURES, load_seed_tables, seed_feature_frame,
 
 RISK_CLASSES = ["Low", "Medium", "High", "Severe"]
 HIGH_CLASS_INDEXES = (2, 3)  # the score is P(High) + P(Severe)
-MODEL_VERSION = "risk-rf-v4-real-labels"
+MODEL_VERSION = "risk-rf-v5-index"  # same forest as v4; the stored score became the risk index
 
 
 def _cv_metrics(y: np.ndarray, proba: np.ndarray) -> dict:

@@ -1,6 +1,5 @@
 import io
 import logging
-from datetime import datetime
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -23,11 +22,11 @@ def generate_fallback_pdf(case: CaseMaster) -> bytes:
     case_no = case.CaseNo or str(case.CaseMasterID)
     facts = (case.BriefFacts or "No facts recorded.").replace("\n", " ").replace("(", "[").replace(")", "]")[:200]
     stream_text = (
-        f"BT /F1 16 Tf 50 750 Td (KARNATAKA STATE POLICE) Tj ET\n"
+        f"BT /F1 16 Tf 50 750 Td (FORENSIQ CASE DOSSIER) Tj ET\n"
         f"BT /F1 12 Tf 50 725 Td (EXECUTIVE DOSSIER - FIR #{case_no}) Tj ET\n"
         f"BT /F1 10 Tf 50 695 Td (Registration Date: {str(case.CrimeRegisteredDate)[:10]}) Tj ET\n"
-        f"BT /F1 10 Tf 50 675 Td (Investigation Priority: {case.InvestigationPriority or 'Medium'}) Tj ET\n"
-        f"BT /F1 10 Tf 50 655 Td (AI Risk Score: {int((case.AIRiskScore or 0.55)*100)}%) Tj ET\n"
+        f"BT /F1 10 Tf 50 675 Td (Investigation Priority: {case.InvestigationPriority or 'not set'}) Tj ET\n"
+        f"BT /F1 10 Tf 50 655 Td (AI Risk: {(str(case.AIRiskLevel) + ', index ' + str(int(case.AIRiskScore * 100)) + '/100') if case.AIRiskScore is not None else 'not scored'}) Tj ET\n"
         f"BT /F1 9 Tf 50 625 Td (Brief Facts: {facts[:75]}) Tj ET\n"
     ).encode("latin-1", errors="ignore")
 
@@ -139,15 +138,13 @@ def build_pdf_bytes_for_case(case: CaseMaster) -> bytes:
         if hasattr(case.station, 'district') and case.station.district:
             district_name = case.station.district.DistrictName or "N/A"
 
-    risk_score_val = case.AIRiskScore or 0.0
-    risk_pct = f"{risk_score_val * 100:.1f}%"
-    risk_level = "Severe High Risk" if risk_score_val >= 0.8 else "High Risk" if risk_score_val >= 0.6 else "Medium Risk" if risk_score_val >= 0.3 else "Low Risk"
+    risk_text = (f"{case.AIRiskLevel} risk, index {case.AIRiskScore * 100:.0f}/100" if case.AIRiskScore is not None and case.AIRiskLevel else "Not scored")
 
     meta_data = [
         [Paragraph("<b>Case Number</b>", body_style), Paragraph(f"<b>{case.CaseNo or 'N/A'}</b>", body_style), Paragraph("<b>Case Master ID</b>", body_style), Paragraph(f"#{case.CaseMasterID}", body_style)],
         [Paragraph("<b>District</b>", body_style), Paragraph(district_name, body_style), Paragraph("<b>Police Station</b>", body_style), Paragraph(station_name, body_style)],
-        [Paragraph("<b>Registration Date</b>", body_style), Paragraph(case.CrimeRegisteredDate.strftime('%Y-%m-%d') if case.CrimeRegisteredDate else "N/A", body_style), Paragraph("<b>Priority</b>", body_style), Paragraph(f"<b>{case.InvestigationPriority or 'Medium'}</b>", body_style)],
-        [Paragraph("<b>AI Risk Score</b>", body_style), Paragraph(f"<font color='#b91c1c'><b>{risk_level} ({risk_pct})</b></font>", body_style), Paragraph("<b>Sensitivity</b>", body_style), Paragraph(case.CaseSensitivity or "Standard", body_style)]
+        [Paragraph("<b>Registration Date</b>", body_style), Paragraph(case.CrimeRegisteredDate.strftime('%Y-%m-%d') if case.CrimeRegisteredDate else "N/A", body_style), Paragraph("<b>Priority</b>", body_style), Paragraph(f"<b>{case.InvestigationPriority or 'Not set'}</b>", body_style)],
+        [Paragraph("<b>AI Risk</b>", body_style), Paragraph(f"<font color='#b91c1c'><b>{risk_text}</b></font>", body_style), Paragraph("<b>Sensitivity</b>", body_style), Paragraph(case.CaseSensitivity or "Standard", body_style)]
     ]
     t_meta = Table(meta_data, colWidths=[110, 160, 110, 160])
     t_meta.setStyle(TableStyle([
@@ -163,11 +160,11 @@ def build_pdf_bytes_for_case(case: CaseMaster) -> bytes:
     story.append(Paragraph(case.BriefFacts or "No facts recorded.", facts_style))
 
     # AI Threat Analysis
-    story.append(Paragraph("AI Threat & Pattern Analytics", h2_style))
+    story.append(Paragraph("AI Risk Assessment", h2_style))
     ai_text = (
-        f"<b>Predictive Threat Index:</b> {risk_pct} ({risk_level})<br/>"
-        f"<b>Spatio-Temporal Coordinates:</b> Lat: {case.latitude or 0.0:.4f}, Lng: {case.longitude or 0.0:.4f}<br/>"
-        f"<b>Tactical Patrol Directive:</b> Focus mobile beat patrols near sector coordinates ({case.latitude or 0.0:.3f}, {case.longitude or 0.0:.3f}) during peak crime hours (18:00 - 02:00 hrs). Cross-reference active bail status and gang linkages."
+        f"<b>Risk assessment:</b> {risk_text}<br/>"
+        f"<b>Location of incident:</b> latitude {case.latitude or 0.0:.4f}, longitude {case.longitude or 0.0:.4f}<br/>"
+        f"<i>The risk index is the model's expected severity (Low near 0, Medium near 33, High near 67, Severe near 100) and is an estimate, not a recorded fact.</i>"
     )
     story.append(Paragraph(ai_text, ai_style))
 

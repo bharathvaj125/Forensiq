@@ -144,7 +144,7 @@ export default function Hotspot({ activeTab = "gis" }: HotspotProps) {
               ${pt.CrimeHeadName ? `<span class="text-slate-700 block">Crime: <strong>${escapeHtml(pt.CrimeHeadName)}</strong></span>` : ""}
               <span class="text-slate-700 block">Station: <strong>${escapeHtml(pt.PoliceStationName)}</strong></span>
               ${pt.IncidentFromDate ? `<span class="text-slate-700 block">Incident: <strong>${escapeHtml(pt.IncidentFromDate.replace("T", " ").slice(0, 16))}</strong></span>` : ""}
-              ${pt.AIRiskLevel ? `<span class="font-bold block mt-1" style="color:${colour}">AI risk: ${escapeHtml(pt.AIRiskLevel)}${pt.AIRiskScore != null ? ` (${pt.AIRiskScore.toFixed(2)})` : ""}</span>` : ""}
+              ${pt.AIRiskLevel ? `<span class="font-bold block mt-1" style="color:${colour}">AI risk: ${escapeHtml(pt.AIRiskLevel)}${pt.AIRiskScore != null ? ` (index ${Math.round(pt.AIRiskScore * 100)}/100)` : ""}</span>` : ""}
             </div>
           </div>`)
         .addTo(group);

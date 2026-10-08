@@ -105,6 +105,7 @@ def predict_case_risk(
         Confidence=result["confidence"],
         ConfidenceMeaning=result["confidence_meaning"],
         ClassProbabilities=result["class_probabilities"],
+        HighOrSevereProbability=result["high_probability"],
     )
 
 

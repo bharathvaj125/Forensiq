@@ -82,20 +82,22 @@ def get_me(
     """
     Retrieves the profile details of the currently logged-in active user.
     """
-    if getattr(current_user, "OfficerID", None):
-        try:
+    from app.services import cache
+
+    def build():
+        rank = None
+        if getattr(current_user, "OfficerID", None):
             from app.models.officer import Officer
             officer = db.query(Officer).filter(Officer.OfficerID == current_user.OfficerID).first()
-            if officer:
-                setattr(current_user, "Rank", officer.Rank)
-        except Exception:
-            pass
-    from app.core.permissions import permissions_for_user
-    setattr(current_user, "Permissions", permissions_for_user(db, current_user))
-    from app.services.scope_service import describe_scope
-    level, description = describe_scope(db, current_user)
-    setattr(current_user, "ScopeLevel", level)
-    setattr(current_user, "ScopeDescription", description)
+            rank = officer.Rank if officer else None
+        from app.core.permissions import permissions_for_user
+        from app.services.scope_service import describe_scope
+        level, description = describe_scope(db, current_user)
+        return {"Rank": rank, "Permissions": permissions_for_user(db, current_user), "ScopeLevel": level, "ScopeDescription": description}
+
+    extras = cache.get_or_compute(("me", current_user.UserID), 60, build)
+    for name, value in extras.items():
+        setattr(current_user, name, value)
     return current_user
 
 

@@ -5,7 +5,9 @@ import socket
 import logging
 import traceback
 from urllib.parse import urlparse, parse_qs
-from sqlalchemy import create_engine, text
+import time
+
+from sqlalchemy import create_engine, event, exc, text
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings, BASE_DIR
 
@@ -59,6 +61,7 @@ except Exception as dns_err:
     logger.error("Exception repr: %r", dns_err)
 
 DB_FALLBACK_ACTIVE = False
+IDLE_PING_SECONDS = 20
 
 
 def create_resilient_db_engine():
@@ -69,13 +72,25 @@ def create_resilient_db_engine():
 
     logger.info("Initializing SQLAlchemy Engine for PostgreSQL...")
     try:
-        eng = create_engine(
-            db_url,
-            pool_pre_ping=True,
-            pool_size=5,
-            max_overflow=10,
-            pool_recycle=300
-        )
+        # No ping on every checkout (a round trip to a remote database each time); a connection that has sat idle for a
+        # while is checked before use instead, and replaced if the server has dropped it.
+        eng = create_engine(db_url, pool_size=5, max_overflow=10, pool_recycle=300)
+
+        @event.listens_for(eng, "checkin")
+        def _remember_last_use(dbapi_connection, connection_record):
+            connection_record.info["last_used"] = time.time()
+
+        @event.listens_for(eng, "checkout")
+        def _ping_if_idle(dbapi_connection, connection_record, connection_proxy):
+            if time.time() - connection_record.info.get("last_used", 0.0) < IDLE_PING_SECONDS:
+                return
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("SELECT 1")
+            except Exception:
+                raise exc.DisconnectionError()
+            finally:
+                cursor.close()
         logger.info(f"SQLAlchemy Dialect: {eng.dialect.name}")
         with eng.connect() as conn:
             ver_result = conn.execute(text("SELECT version();")).scalar()
@@ -92,7 +107,7 @@ def create_resilient_db_engine():
             logger.error("Original psycopg2 pgcode: %s", getattr(e.orig, "pgcode", None))
             logger.error("Original psycopg2 pgerror: %s", getattr(e.orig, "pgerror", None))
         logger.error(traceback.format_exc())
-        
+
         logger.warning("Falling back to local SQLite engine to guarantee container stability, live logging, and login functionality.")
         fallback_path = os.path.join(BASE_DIR, "ksp_crime_intel.db")
         DB_FALLBACK_ACTIVE = True

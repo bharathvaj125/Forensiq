@@ -21,7 +21,7 @@ from app.models.officer import Officer
 from app.models.police_station import PoliceStation
 from app.models.task_delegation import TaskDelegation
 from app.models.user import User
-from app.services import analytics, predictive_service, reference_data
+from app.services import analytics, cache, predictive_service, reference_data
 
 router = APIRouter()
 
@@ -42,6 +42,11 @@ def get_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:read")),
 ):
+    return _build_summary(db, current_user, district_id, station_id)
+
+
+@cache.per_user(90)
+def _build_summary(db: Session, current_user: User, district_id: Optional[int], station_id: Optional[int]):
     as_of = analytics.as_of_date(db)
     everything = analytics.load_cases(db, current_user)
     future = int((everything["registered"] > pd.Timestamp(as_of)).sum())

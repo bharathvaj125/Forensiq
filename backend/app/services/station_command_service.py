@@ -17,9 +17,11 @@ from app.models.evidence import Evidence
 from app.models.officer import Officer
 from app.models.user import User
 from app.models.witness import Witness
+from app.services import cache
 from app.services import analytics, predictive_service, reference_data
 
 
+@cache.per_user(90)
 def get_station_command_center(db: Session, current_user: User, station_id: Optional[int] = None,
                                district_id: Optional[int] = None) -> dict:
     as_of = analytics.as_of_date(db)

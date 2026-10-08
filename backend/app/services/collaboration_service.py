@@ -17,6 +17,7 @@ from app.models.user import User
 from app.models.role import Role
 from app.models.audit_log import AuditLog
 from app.core.security import hash_password
+from app.services import cache
 
 # Seed Default Agencies, Officers, and User Accounts for Login Integration
 def seed_default_agencies_if_needed(db: Session):
@@ -26,6 +27,7 @@ def seed_default_agencies_if_needed(db: Session):
         ext_role = Role(RoleName="ExternalAgencyOfficer", Description="External Agency Investigating Officer Access Role")
         db.add(ext_role)
         db.commit()
+        cache.clear()  # access grants change what officers can see
         db.refresh(ext_role)
 
     agency_count = db.query(ExternalAgency).count()
@@ -77,6 +79,7 @@ def seed_default_agencies_if_needed(db: Session):
             agency = ExternalAgency(**item, Status="Active")
             db.add(agency)
         db.commit()
+        cache.clear()  # access grants change what officers can see
 
     # Seed 3 Default External Officers and sync User Accounts
     cbi = db.query(ExternalAgency).filter(ExternalAgency.AgencyCode == "CBI").first()
@@ -132,6 +135,7 @@ def seed_default_agencies_if_needed(db: Session):
             )
             db.add(off)
             db.commit()
+            cache.clear()  # access grants change what officers can see
             db.refresh(off)
 
         usr = db.query(User).filter(User.Username == item["username"]).first()
@@ -145,6 +149,7 @@ def seed_default_agencies_if_needed(db: Session):
             )
             db.add(usr)
             db.commit()
+            cache.clear()  # access grants change what officers can see
 
     # Seed distinct default requests & active approved access records for all 3 officers
     cbi_off = db.query(ExternalAgencyOfficer).filter(ExternalAgencyOfficer.Username == "cbi_sp_verma").first()
@@ -197,6 +202,7 @@ def seed_default_agencies_if_needed(db: Session):
                 )
                 db.add(req)
                 db.commit()
+                cache.clear()  # access grants change what officers can see
                 db.refresh(req)
 
                 acc = CollaborationAccess(
@@ -225,6 +231,7 @@ def seed_default_agencies_if_needed(db: Session):
                 )
                 db.add(acc)
                 db.commit()
+                cache.clear()  # access grants change what officers can see
 
 
 # External Officer Authentication Login
@@ -282,6 +289,7 @@ def create_external_agency(db: Session, agency_data: dict, current_user: User) -
     )
     db.add(agency)
     db.commit()
+    cache.clear()  # access grants change what officers can see
     db.refresh(agency)
     return agency
 
@@ -338,6 +346,7 @@ def create_external_agency_officer(db: Session, officer_data: dict, current_user
     )
     db.add(officer)
     db.commit()
+    cache.clear()  # access grants change what officers can see
     db.refresh(officer)
 
     # Sync User
@@ -353,6 +362,7 @@ def create_external_agency_officer(db: Session, officer_data: dict, current_user
         )
         db.add(usr)
         db.commit()
+        cache.clear()  # access grants change what officers can see
 
     return officer
 
@@ -371,21 +381,26 @@ def create_external_officer_request(db: Session, req_data: dict, current_user: U
     if not officer and current_user:
         officer = db.query(ExternalAgencyOfficer).filter(ExternalAgencyOfficer.OfficialEmail == current_user.Email).first()
 
+    if not officer:
+        raise HTTPException(status_code=403, detail="Only a registered external-agency officer can submit an access request.")
     case_id = req_data.get("CaseMasterID")
-    if case_id:
-        case = db.query(CaseMaster).filter(CaseMaster.CaseMasterID == case_id).first()
-        if not case:
-            raise HTTPException(status_code=404, detail="Target police case not found.")
+    if not case_id:
+        raise HTTPException(status_code=422, detail="Choose the case the request is for.")
+    if not db.query(CaseMaster.CaseMasterID).filter(CaseMaster.CaseMasterID == case_id).first():
+        raise HTTPException(status_code=404, detail="Target police case not found.")
 
     duration_days = int(req_data.get("DurationDays", 14))
     start_d = datetime.now(timezone.utc)
     expiry_d = start_d + timedelta(days=duration_days)
 
+    requested_by = current_user.OfficerID if current_user else None
+    if not requested_by:
+        raise HTTPException(status_code=422, detail="Your account is not linked to an officer record.")
     req = CollaborationRequest(
-        CaseMasterID=case_id or 1,
-        AgencyID=officer.AgencyID if officer else 1,
-        RequestedByOfficerID=1,
-        TargetAgencyOfficerID=officer.AgencyOfficerID if officer else 1,
+        CaseMasterID=case_id,
+        AgencyID=officer.AgencyID,
+        RequestedByOfficerID=requested_by,
+        TargetAgencyOfficerID=officer.AgencyOfficerID,
         Priority=req_data.get("Priority", "High"),
         Reason=req_data.get("Reason", "Inter-agency crime investigation access request"),
         RequestedModules=req_data.get("RequestedModules", "FIR, Evidence, AI Assistant, Crime Network"),
@@ -397,6 +412,7 @@ def create_external_officer_request(db: Session, req_data: dict, current_user: U
     )
     db.add(req)
     db.commit()
+    cache.clear()  # access grants change what officers can see
     db.refresh(req)
 
     # Log Audit
@@ -408,6 +424,7 @@ def create_external_officer_request(db: Session, req_data: dict, current_user: U
         ClientIP="127.0.0.1"
     ))
     db.commit()
+    cache.clear()  # access grants change what officers can see
 
     return req
 
@@ -521,15 +538,18 @@ def approve_collaboration_request(db: Session, request_id: int, approval_config:
         raise HTTPException(status_code=404, detail="Collaboration request not found.")
 
     req.Status = "Approved"
-    req.ApprovedByOfficerID = current_user.OfficerID or 1
+    req.ApprovedByOfficerID = current_user.OfficerID
     db.commit()
+    cache.clear()  # access grants change what officers can see
 
     scope_level = approval_config.get("AccessScopeLevel", "Case")
     duration_days = int(approval_config.get("DurationDays", 14))
 
     start_d = datetime.now(timezone.utc)
     end_d = start_d + timedelta(days=duration_days)
-    target_officer_id = req.TargetAgencyOfficerID or 1
+    target_officer_id = req.TargetAgencyOfficerID
+    if not target_officer_id:
+        raise HTTPException(status_code=422, detail="This request has no external officer to grant access to.")
 
     access = CollaborationAccess(
         RequestID=req.RequestID,
@@ -561,6 +581,7 @@ def approve_collaboration_request(db: Session, request_id: int, approval_config:
     )
     db.add(access)
     db.commit()
+    cache.clear()  # access grants change what officers can see
 
     db.add(AuditLog(
         UserID=current_user.UserID,
@@ -570,6 +591,7 @@ def approve_collaboration_request(db: Session, request_id: int, approval_config:
         ClientIP="127.0.0.1"
     ))
     db.commit()
+    cache.clear()  # access grants change what officers can see
 
     return {
         "status": "success",
@@ -585,6 +607,7 @@ def reject_collaboration_request(db: Session, request_id: int, remarks: str, cur
     req.Status = "Rejected"
     req.Remarks = remarks
     db.commit()
+    cache.clear()  # access grants change what officers can see
     return {"status": "rejected", "message": f"Request #{request_id} rejected."}
 
 
@@ -615,6 +638,7 @@ def get_external_officer_workspace(db: Session, current_user: User, officer_id: 
         if acc.AccessEnd and acc.AccessEnd.replace(tzinfo=timezone.utc) < now:
             acc.Status = False
             db.commit()
+            cache.clear()  # access grants change what officers can see
             continue
 
         if acc.AccessScopeLevel == "State":

@@ -16,7 +16,7 @@ from app.models.accused import Accused
 from app.models.case_master import CaseMaster
 from app.models.court_case import CourtCase
 from app.models.user import User
-from app.services import analytics, audit_service, reference_data
+from app.services import analytics, audit_service, cache, reference_data
 
 router = APIRouter()
 
@@ -79,6 +79,11 @@ def get_court_cases(
     db: Session = Depends(get_db),
     current_user: User = Depends(verify_permission("cases:read")),
 ):
+    return _court_cases(db, current_user, stage, search, limit, offset)
+
+
+@cache.per_user(60)
+def _court_cases(db: Session, current_user: User, stage, search, limit: int, offset: int):
     groups = reference_data.status_groups(db)
     status_names = reference_data.status_names(db)
     court_stage_ids = groups["chargesheet"] + groups["trial"] + groups["convicted"]
@@ -158,6 +163,7 @@ def record_hearing(
             "stage": changes.get("TrialStage") or record.TrialStage, "date": date.today().isoformat(),
             "status": "Completed", "note": f"{note} (recorded by {current_user.Username})"}]
     db.commit()
+    cache.clear()
     audit_service.log_action(db=db, user_id=current_user.UserID, action="UPDATE_COURT_HEARING", module="Court Monitoring",
                              resource_id=str(case_master_id), new_val=str(changes))
     return {"message": "Hearing record saved", "CaseMasterID": case_master_id, "CourtCaseID": record.CourtCaseID}

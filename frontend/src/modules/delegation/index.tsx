@@ -78,7 +78,7 @@ export default function TaskDelegationModule() {
   const { data: appointedTasks, isLoading: isTasksLoading } = useQuery({
     queryKey: ["tasksAssignedByMe"],
     queryFn: () => taskService.getTasksAssignedByMe(),
-    refetchInterval: 5000, // Real-time sync every 5s
+    refetchInterval: 30000, // re-check every 30 s (each check is a request to the server)
   });
 
   // Mutation for appointing task

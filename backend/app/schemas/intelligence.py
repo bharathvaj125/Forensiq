@@ -16,6 +16,7 @@ class PredictRiskResponse(BaseModel):
     Confidence: float | None = None
     ConfidenceMeaning: str | None = None
     ClassProbabilities: dict[str, float] | None = None
+    HighOrSevereProbability: float | None = None  # AIRiskScore is the 0-1 risk index; this is the chance of High or Severe
 
 
 class SimilarityFactor(BaseModel):
